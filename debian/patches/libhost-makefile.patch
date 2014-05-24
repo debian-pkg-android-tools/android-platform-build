@@ -1,0 +1,67 @@
+Index: android-platform-build/libs/host/Makefile
+===================================================================
+--- /dev/null	1970-01-01 00:00:00.000000000 +0000
++++ android-platform-build/libs/host/Makefile	2012-11-26 22:43:58.812198243 +0100
+@@ -0,0 +1,62 @@
++#!/bin/make
++
++CC = gcc
++
++SOURCES = abort_socket.c \
++          array.c \
++          ashmem-host.c \
++          buffer.c \
++          config_utils.c \
++          cpu_info.c \
++          hashmap.c \
++          iosched_policy.c \
++          list.c \
++          load_file.c \
++          native_handle.c \
++          open_memstream.c \
++          process_name.c \
++          properties.c \
++          qsort_r_compat.c \
++          record_stream.c \
++          sched_policy.c \
++          selector.c \
++          sockets.c \
++          socket_inaddr_any_server.c \
++          socket_local_client.c \
++          socket_local_server.c \
++          socket_loopback_client.c \
++          socket_loopback_server.c \
++          socket_network_client.c \
++          strdup16to8.c \
++          strdup8to16.c \
++          str_parms.c \
++          threads.c \
++          zygote.c
++
++OBJECTS = $(SOURCES:.c=.o)
++
++LD_FLAGS = -L../liblog -lpthread -landroidlog -lbsd
++CFLAGS = -c -fPIC -I../include \
++         -DHAVE_SYS_UIO_H \
++         -DHAVE_PTHREADS \
++         -DANDROID_SMP=0 \
++         -DHAVE_GNU_QSORT_R \
++         -DHAVE_OPEN_MEMSTREAM \
++         -DHAVE_SYSTEM_PROPERTY_SERVER \
++         -DHAVE_STRLCPY
++
++LIBNAME = androidcutils
++
++all: $(OBJECTS) $(LIBNAME).pc
++	$(CC) -shared -Wl,-soname,lib$(LIBNAME).so.1 -o lib$(LIBNAME).so.1 $(OBJECTS) $(LD_FLAGS)
++	ln -sf lib$(LIBNAME).so.1 lib$(LIBNAME).so
++	ar rs lib$(LIBNAME).a $(OBJECTS)
++
++$(LIBNAME).pc: $(LIBNAME).pc.in
++	sed -e 's/@VERSION@/$(VERSION)/g' -e 's/@TRIPLET@/$(TRIPLET)/g' $(LIBNAME).pc.in > $(LIBNAME).pc
++
++clean:
++	rm -f $(OBJECTS)
++	rm -f lib$(LIBNAME).so lib$(LIBNAME).so.1 lib$(LIBNAME).a
++	rm -f $(LIBNAME).pc
++

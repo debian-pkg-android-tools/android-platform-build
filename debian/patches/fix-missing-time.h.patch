@@ -1,0 +1,12 @@
+Index: android-platform-build/tools/zipalign/ZipEntry.cpp
+===================================================================
+--- android-platform-build.orig/tools/zipalign/ZipEntry.cpp	2014-05-23 23:53:08.000000000 -0400
++++ android-platform-build/tools/zipalign/ZipEntry.cpp	2014-05-23 23:53:26.000000000 -0400
+@@ -26,6 +26,7 @@
+ #include <stdio.h>
+ #include <string.h>
+ #include <assert.h>
++#include <time.h>
+ 
+ using namespace android;
+ 
