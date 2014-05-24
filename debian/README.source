@@ -1,0 +1,20 @@
+The source code has been excerpted form the git repository
+ https://android.googlesource.com/platform/build
+
+The Android project does not release tarballs of their core software. This
+package source repo is configured following git-buildpackage's manual, under
+"When upstream uses GIT/No upstream tarballs":
+
+* http://honk.sigxcpu.org/projects/git-buildpackage/manual-html/gbp.import.html#GBP.IMPORT.UPSTREAM-GIT
+* file:///usr/share/doc/git-buildpackage/manual-html/gbp.import.html#GBP.IMPORT.UPSTREAM-GIT
+
+If you want to update the source git repo for this package to a newer release,
+then fetch the new commits from the upstream git repo:
+
+ git remote add upstream https://android.googlesource.com/platform/build
+ git fetch upstream
+
+debian/gbp.conf is set up to use upstream's release branches and build
+tarballs from there.
+
+ -- Hans-Christoph Steiner <hans@eds.org>, Fri, 23 May 2014 23:15:28 -0400

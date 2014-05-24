@@ -1,0 +1,9 @@
+*~
+*.debhelper
+*.substvars
+*.log
+files
+tmp/
+zipalign/
+libhost-dev/
+libhost0/
