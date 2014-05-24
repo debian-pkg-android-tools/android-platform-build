@@ -40,3 +40,21 @@ Description: Align zip/jar/apk along byte boundaries
  "-f" flag, an existing file will be overwritten.
  .
  You can use the "-c" flag to test whether a zip archive is properly aligned.
+
+Package: libhost0
+Section: libs
+Architecture: any
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: Android utility library for cross-platform tools
+ Library providing utility functions to Android related tools. This is needed
+ purely to get various Android utilities working.
+
+Package: libhost-dev
+Section: libdevel
+Architecture: any
+Depends: ${misc:Depends}, libc-dev, libhost0 (= ${binary:Version})
+Description: Android utility library for cross-platform tools - headers
+ Library providing utility functions to Android related tools. This is needed
+ purely to get various Android utilities working.
+ .
+ This package contains the development files.
