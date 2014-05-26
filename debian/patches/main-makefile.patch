@@ -1,10 +1,12 @@
---- /dev/null	2014-05-21 22:14:08.742851277 -0400
-+++ android-platform-build/Makefile	2014-05-23 23:40:23.000000000 -0400
-@@ -0,0 +1,7 @@
+--- /dev/null
++++ b/Makefile
+@@ -0,0 +1,9 @@
 +#!/usr/bin/make
 +
 +all:
 +	make -C tools/zipalign
++	make -C libs/host
 +
 +clean:
 +	make -C tools/zipalign clean
++	make -C libs/host clean

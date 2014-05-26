@@ -7,7 +7,8 @@ Build-Depends: debhelper (>=9),
                zlib1g-dev,
                libutils-dev,
                libandroidlog-dev,
-               libandroidcutils-dev
+               libandroidcutils-dev,
+               androidsystem-dev
 Standards-Version: 3.9.5
 Homepage: https://android.googlesource.com/platform/build
 Vcs-Git: https://alioth.debian.org/anonscm/git/android-tools/android-platform-build.git

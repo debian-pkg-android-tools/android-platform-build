@@ -1,5 +1,3 @@
 main-makefile.patch
 libhost-makefile.patch
 tools-zipalign-makefile.patch
-fix-missing-time.h.patch
-fix-ziputils.h-location.patch
