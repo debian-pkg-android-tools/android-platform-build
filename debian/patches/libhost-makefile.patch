@@ -9,11 +9,11 @@
 +
 +OBJECTS = $(SOURCES:.c=.o)
 +
-+ALL_CFLAGS += -fPIC -Iinclude \
++ALL_CFLAGS = -fPIC -Iinclude \
 +        -DANDROID_SMP=0 \
 +		-include /usr/include/android/arch/linux-x86/AndroidConfig.h
-+ALL_LDFLAGS += -fPIC -shared
-+ALL_LIBS +=
++ALL_LDFLAGS = -fPIC -shared -rdynamic -Wl,-rpath=/usr/lib/android
++ALL_LIBS =
 +
 +CFLAGS := $(ALL_CFLAGS) $(CFLAGS)
 +LDFLAGS := $(ALL_LDFLAGS) $(LDFLAGS)
