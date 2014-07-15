@@ -16,7 +16,7 @@
 +	-DANDROID_SMP=0 \
 +	-include /usr/include/android/arch/linux-x86/AndroidConfig.h
 +ALL_LDFLAGS +=
-+ALL_LIBS += -lz -lpthread -landroidlog -lutils -landroidcutils
++ALL_LIBS += -lz -lpthread -L/usr/lib/android -llog -lutils -lcutils
 +
 +CXXFLAGS := $(ALL_CXXFLAGS) $(CXXFLAGS)
 +LDFLAGS := $(ALL_LDFLAGS) $(LDFLAGS)
