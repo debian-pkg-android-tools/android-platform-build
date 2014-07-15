@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/libs/host/Makefile
-@@ -0,0 +1,29 @@
+@@ -0,0 +1,28 @@
 +#!/bin/make
 +
 +CC = gcc
@@ -22,11 +22,10 @@
 +LIBNAME = libhost
 +
 +all: $(OBJECTS)
-+	$(CC) $(LDFLAGS) -Wl,-soname,$(LIBNAME).so.0 -o $(LIBNAME).so.0 $(OBJECTS) $(LIBS)
-+	ln -sf $(LIBNAME).so.0 $(LIBNAME).so
++	$(CC) $(LDFLAGS) -Wl,-soname,$(LIBNAME).so -o $(LIBNAME).so $(OBJECTS) $(LIBS)
 +	ar rs $(LIBNAME).a $(OBJECTS)
 +
 +clean:
 +	rm -f $(OBJECTS)
-+	rm -f $(LIBNAME).so $(LIBNAME).so.0 $(LIBNAME).a
++	rm -f $(LIBNAME).so $(LIBNAME).a
 +

@@ -41,7 +41,7 @@ Description: Align zip/jar/apk along byte boundaries
  .
  You can use the "-c" flag to test whether a zip archive is properly aligned.
 
-Package: android-libhost0
+Package: android-libhost
 Section: libs
 Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends}
@@ -52,7 +52,9 @@ Description: Android utility library for cross-platform tools
 Package: android-libhost-dev
 Section: libdevel
 Architecture: any
-Depends: ${misc:Depends}, libc-dev, libhost0 (= ${binary:Version})
+Depends: ${misc:Depends},
+         libc-dev,
+         android-libhost (= ${binary:Version})
 Description: Android utility library for cross-platform tools - headers
  Library providing utility functions to Android related tools. This is needed
  purely to get various Android utilities working.
