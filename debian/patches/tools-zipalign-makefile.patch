@@ -1,6 +1,6 @@
 --- /dev/null
 +++ b/tools/zipalign/Makefile
-@@ -0,0 +1,23 @@
+@@ -0,0 +1,27 @@
 +#!/usr/bin/make
 +
 +CXX = g++
@@ -12,11 +12,15 @@
 +
 +OBJECTS = $(SOURCES:.cpp=.o)
 +
-+CXXFLAGS += -I/usr/include/android \
-+        -DANDROID_SMP=0 \
-+		-include /usr/include/android/arch/linux-x86/AndroidConfig.h
-+LDFLAGS += 
-+LIBS += -lz -lpthread -landroidlog -lutils -landroidcutils
++ALL_CXXFLAGS += -I/usr/include/android \
++	-DANDROID_SMP=0 \
++	-include /usr/include/android/arch/linux-x86/AndroidConfig.h
++ALL_LDFLAGS +=
++ALL_LIBS += -lz -lpthread -landroidlog -lutils -landroidcutils
++
++CXXFLAGS := $(ALL_CXXFLAGS) $(CXXFLAGS)
++LDFLAGS := $(ALL_LDFLAGS) $(LDFLAGS)
++LIBS := $(ALL_LIBS) $(LIBS)
 +
 +all: $(OBJECTS)
 +	$(CXX) $(LDFLAGS) -o zipalign $(OBJECTS) $(LIBS)
