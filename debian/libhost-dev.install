@@ -1,3 +1,0 @@
-libs/host/libhost.a usr/lib/
-libs/host/libhost.so usr/lib/
-libs/host/include/host usr/include/android/
