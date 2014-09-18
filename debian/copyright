@@ -26,31 +26,31 @@ Copyright: 2011, John Resig
            2009, AUTHORS.txt (http://jqueryui.com/about)
 License: MIT
 
-Files: tools/droiddoc/templates-ds/assets/scroller/jquery.mousewheel.min.js
+Files: tools/droiddoc/templates-sdk/assets/scroller/jquery.mousewheel.min.js
 Copyright: 2011, Brandon Aaron (http://brandonaaron.net)
 License: MIT
 
-Files: tools/droiddoc/templates-ds/assets/scroller/jquery.jscrollpane.min.js
+Files: tools/droiddoc/templates-sdk/assets/scroller/jquery.jscrollpane.min.js
 Copyright: 2010, Kelvin Luck
 License: MIT or GPL-2+
 
-Files: tools/droiddoc/templates-ds/assets/js/global-libraries-combined.js
+Files: tools/droiddoc/templates-sdk/assets/js/global-libraries-combined.js
 Copyright: 2012, AUTHORS.txt (http://jqueryui.com/about)
 License: MIT or GPL-2+
 
-Files: tools/droiddoc/templates-ds/assets/js/global-libraries-combined.js
+Files: tools/droiddoc/templates-sdk/assets/js/global-libraries-combined.js
 Copyright: 2011, Brandon Aaron (http://brandonaaron.net)
 License: MIT
 
-Files: tools/droiddoc/templates-ds/assets/js/global-libraries-combined.js
+Files: tools/droiddoc/templates-sdk/assets/js/global-libraries-combined.js
 Copyright: 2010, Kelvin Luck
 License: MIT or GPL-2+
 
-Files: tools/droiddoc/templates-ds/assets/js/global-libraries-combined.js
+Files: tools/droiddoc/templates-sdk/assets/js/global-libraries-combined.js
 Copyright: 2010, "Cowboy" Ben Alman
 License: MIT or GPL-2+
 
-Files: tools/droiddoc/templates-ds/assets/js/grid/960.gridder.js
+Files: tools/droiddoc/templates-sdk/assets/js/grid/960.gridder.js
 Copyright: Andr?e Hansson (peolanha AT gmail DOT com)
 License: MIT
 
