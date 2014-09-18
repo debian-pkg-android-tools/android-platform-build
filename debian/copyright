@@ -11,6 +11,10 @@ Files: debian/*
 Copyright: public-domain
 License: public-domain
 
+Files: tools/droiddoc/templates-pdk/assets/jquery-history.js
+Copyright: 2008, Tom Rodenberg <tarodenberg gmail com>
+License: GPL-2+
+
 Files: tools/droiddoc/templates-pdk/assets/yui-3.3.0-reset-min.css
 Copyright: 2010, Yahoo! Inc.
 License: Yahoo-BSD
