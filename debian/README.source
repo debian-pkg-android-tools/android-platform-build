@@ -49,4 +49,20 @@ then fetch the new commits from the upstream git repo:
 debian/gbp.conf is set up to use upstream's release branches and build
 tarballs from there.
 
- -- Hans-Christoph Steiner <hans@eds.org>, Thu, 18 Sep 2014 16:37:50 -0400
+
+Omitted files
+-------------
+
+tools/droiddoc/templates-pdk/assets/jquery-resizable.min.js
+tools/droiddoc/templates-pdk/assets/prettify.js
+tools/droiddoc/templates-sdk/assets/js/global-libraries-combined.js
+tools/droiddoc/templates-sdk/assets/js/prettify.js
+tools/droiddoc/templates-sdk/assets/scroller/jquery.jscrollpane.min.js
+tools/droiddoc/templates-sdk/assets/scroller/jquery.mousewheel.min.js
+
+These are minimized .js files, so they are not the same as the original source
+code.  They were removed in a commit in the 'upstream' branch so that they do
+not get included in the source tarball that is generated from this repo.
+
+
+ -- Hans-Christoph Steiner <hans@eds.org>, Thu, 18 Sep 2014 19:54:12 -0400
