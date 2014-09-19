@@ -15,7 +15,6 @@ Vcs-Git: https://alioth.debian.org/anonscm/git/android-tools/android-platform-bu
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=android-tools/android-platform-build.git
 
 Package: zipalign
-Section: devel
 Architecture: any
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Description: Align zip/jar/apk along byte boundaries
