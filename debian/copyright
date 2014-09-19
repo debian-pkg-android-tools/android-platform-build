@@ -5,7 +5,7 @@ Source: https://android.googlesource.com/platform/system/core
 
 Files: *
 Copyright: 2005-2014, The Android Open Source Project
-License: Apache 2.0
+License: Apache-2.0
 
 Files: debian/*
 Copyright: public-domain
@@ -54,7 +54,7 @@ Files: tools/droiddoc/templates-sdk/assets/js/grid/960.gridder.js
 Copyright: Andr?e Hansson (peolanha AT gmail DOT com)
 License: MIT
 
-License: Apache 2.0
+License: Apache-2.0
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
  .
