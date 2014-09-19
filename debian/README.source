@@ -47,7 +47,13 @@ then fetch the new commits from the upstream git repo:
  git fetch upstream
 
 debian/gbp.conf is set up to use upstream's release branches and build
-tarballs from there.
+tarballs from there.  There are some files that need to be removed from the
+source tarball, they are removed in commits to the 'upstream' branch, since
+the source tarball is generated directly from that. The upstream tags and
+branches are a confusing mess of things, so this package uses debian-style
+upstream/NO tags as the canonical source marker.  These tags must be generated
+by a human, since Android does not provide a rational tagging scheme based on
+their public version numbers of the Android SDK and related packages.
 
 
 Omitted files
@@ -65,4 +71,4 @@ code.  They were removed in a commit in the 'upstream' branch so that they do
 not get included in the source tarball that is generated from this repo.
 
 
- -- Hans-Christoph Steiner <hans@eds.org>, Thu, 18 Sep 2014 19:54:12 -0400
+ -- Hans-Christoph Steiner <hans@eds.org>, Thu, 18 Sep 2014 20:01:52 -0400
