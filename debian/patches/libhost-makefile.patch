@@ -1,13 +1,12 @@
 --- /dev/null
 +++ b/libs/host/Makefile
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,32 @@
 +#!/bin/make
 +
 +CC = gcc
 +
-+SOURCES = CopyFile.c
-+
-+OBJECTS = $(SOURCES:.c=.o)
++# the sources are: CopyFile.c and pseudolocalize.cpp
++OBJECTS = CopyFile.o pseudolocalize.o
 +
 +ALL_CFLAGS = -fPIC -Iinclude \
 +        -DANDROID_SMP=0 \
@@ -16,13 +15,18 @@
 +ALL_LIBS =
 +
 +CFLAGS := $(ALL_CFLAGS) $(CFLAGS)
++CXXFLAGS := $(ALL_CFLAGS) $(CXXFLAGS)
 +LDFLAGS := $(ALL_LDFLAGS) $(LDFLAGS)
 +LIBS := $(ALL_LIBS) $(LIBS)
 +
 +LIBNAME = libhost
 +
-+all: $(OBJECTS)
++all: $(LIBNAME).so $(LIBNAME).a
++
++$(LIBNAME).so: $(OBJECTS)
 +	$(CC) $(LDFLAGS) -Wl,-soname,$(LIBNAME).so -o $(LIBNAME).so $(OBJECTS) $(LIBS)
++
++$(LIBNAME).a: $(OBJECTS)
 +	ar rs $(LIBNAME).a $(OBJECTS)
 +
 +clean:
