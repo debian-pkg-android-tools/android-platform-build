@@ -5,5 +5,5 @@
 files
 tmp/
 zipalign/
-libhost-dev/
-libhost0/
+android-libhost-dev/
+android-libhost/
