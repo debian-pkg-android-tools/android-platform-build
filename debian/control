@@ -12,7 +12,7 @@ Build-Depends: debhelper (>=9),
 Standards-Version: 3.9.6
 Homepage: https://android.googlesource.com/platform/build
 Vcs-Git: https://alioth.debian.org/anonscm/git/android-tools/android-platform-build.git
-Vcs-Browser: http://anonscm.debian.org/gitweb/?p=android-tools/android-platform-build.git
+Vcs-Browser: http://anonscm.debian.org/cgit/android-tools/android-platform-build.git
 
 Package: zipalign
 Architecture: any
