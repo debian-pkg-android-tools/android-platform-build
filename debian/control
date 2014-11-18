@@ -9,7 +9,7 @@ Build-Depends: debhelper (>=9),
                android-liblog-dev,
                android-libcutils-dev,
                android-system-dev
-Standards-Version: 3.9.5
+Standards-Version: 3.9.6
 Homepage: https://android.googlesource.com/platform/build
 Vcs-Git: https://alioth.debian.org/anonscm/git/android-tools/android-platform-build.git
 Vcs-Browser: http://anonscm.debian.org/gitweb/?p=android-tools/android-platform-build.git
