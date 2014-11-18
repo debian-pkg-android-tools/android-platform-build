@@ -24,7 +24,7 @@
 +all: $(LIBNAME).so.0.21.0 $(LIBNAME).a
 +
 +$(LIBNAME).so.0.21.0: $(OBJECTS)
-+	$(CC) $(LDFLAGS) -Wl,-soname,$(LIBNAME).so.0 -o $(LIBNAME).so.0.21.0 $(OBJECTS) $(LIBS)
++	$(CXX) $(LDFLAGS) -Wl,-soname,$(LIBNAME).so.0 -o $(LIBNAME).so.0.21.0 $(OBJECTS) $(LIBS)
 +
 +$(LIBNAME).a: $(OBJECTS)
 +	ar rs $(LIBNAME).a $(OBJECTS)
