@@ -1,3 +1,11 @@
+android-platform-build (21-3) unstable; urgency=low
+
+  * add versions to shlibs so dh can do dep detection
+  * link libhost with $(CXX) since it includes a .cpp file
+  * Standards-Version: 3.9.6
+
+ -- Hans-Christoph Steiner <hans@eds.org>  Tue, 18 Nov 2014 15:15:37 +0100
+
 android-platform-build (21-2) unstable; urgency=low
 
   * include pseudolocalize in libhost
