@@ -1,3 +1,9 @@
+android-platform-build (21-4) unstable; urgency=low
+
+  * include Breaks: and Replaces: to allow for proper upgrading
+
+ -- Hans-Christoph Steiner <hans@eds.org>  Tue, 25 Nov 2014 12:53:11 +0100
+
 android-platform-build (21-3) unstable; urgency=low
 
   * add versions to shlibs so dh can do dep detection
