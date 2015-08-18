@@ -18,14 +18,11 @@ Vcs-Git: git://anonscm.debian.org/android-tools/android-platform-build.git
 Vcs-Browser: https://anonscm.debian.org/cgit/android-tools/android-platform-build.git
 
 Package: zipalign
-Section: devel
 Architecture: any
 Depends: android-libandroidfw,
          android-libcutils,
          android-liblog,
          android-libutils,
-         libzopfli1,
-         zlib1g,
          ${shlibs:Depends},
          ${misc:Depends}
 Description: Zip archive alignment tool
