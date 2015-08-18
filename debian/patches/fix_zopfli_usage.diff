@@ -1,0 +1,24 @@
+Description: zopfli is written in C but zipalign is in C++.
+Author: Kai-Chung Yan <seamlikok@gmail.com>
+Last-Update: 2015-08-18
+--- a/tools/zipalign/ZipFile.cpp
++++ b/tools/zipalign/ZipFile.cpp
+@@ -28,7 +28,9 @@
+ #include <zlib.h>
+ #define DEF_MEM_LEVEL 8                // normally in zutil.h?
+ 
++extern "C" {
+ #include "zopfli/deflate.h"
++}
+ 
+ #include <memory.h>
+ #include <sys/stat.h>
+@@ -846,7 +848,7 @@
+ 
+     while (length) {
+         long readSize;
+-        
++
+         readSize = sizeof(tmpBuf);
+         if (readSize > length)
+             readSize = length;
