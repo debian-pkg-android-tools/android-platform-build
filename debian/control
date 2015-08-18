@@ -5,9 +5,9 @@ Maintainer: Android tools Maintainer <android-tools-devel@lists.alioth.debian.or
 Uploaders: Kai-Chung Yan <seamlikok@gmail.com>,
            Hans-Christoph Steiner <hans@eds.org>
 Build-Depends: android-libandroidfw-dev,
-               android-libcutils-dev
-               android-liblog-dev
-               android-libutils-dev
+               android-libcutils-dev,
+               android-liblog-dev,
+               android-libutils-dev,
                debhelper (>= 9),
                dh-exec,
                zlib1g-dev,
@@ -25,7 +25,7 @@ Description: Global config headers for all Android programs and libraries
  This package contains headers of various architectures that must be included
  by all Android C/C++ codes.
 
-Pakcage: zipalign
+Package: zipalign
 Section: devel
 Architecture: any
 Depends: android-libandroidfw,
@@ -33,7 +33,7 @@ Depends: android-libandroidfw,
          android-liblog,
          android-libutils
          libzopfli1,
-         zlib1g
+         zlib1g,
          ${shlibs:Depends},
          ${misc:Depends}
 Description: Zip archive alignment tool
