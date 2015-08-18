@@ -31,7 +31,7 @@ Architecture: any
 Depends: android-libandroidfw,
          android-libcutils,
          android-liblog,
-         android-libutils
+         android-libutils,
          libzopfli1,
          zlib1g,
          ${shlibs:Depends},
