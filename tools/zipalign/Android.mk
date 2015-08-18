@@ -12,11 +12,15 @@ LOCAL_SRC_FILES := \
 	ZipEntry.cpp \
 	ZipFile.cpp
 
-LOCAL_C_INCLUDES += external/zlib
+LOCAL_C_INCLUDES += external/zlib \
+	external/zopfli/src
 
 LOCAL_STATIC_LIBRARIES := \
+	libandroidfw \
 	libutils \
-	libcutils
+	libcutils \
+	liblog \
+	libzopfli
 
 ifeq ($(HOST_OS),linux)
 LOCAL_LDLIBS += -lrt
@@ -35,4 +39,3 @@ endif # BUILD_HOST_static
 LOCAL_MODULE := zipalign
 
 include $(BUILD_HOST_EXECUTABLE)
-

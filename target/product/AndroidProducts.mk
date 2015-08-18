@@ -31,24 +31,44 @@
 # it includes.
 #
 
-# Unbundled apps will be built with the default product config.
+# Unbundled apps will be built with the most generic product config.
 ifneq ($(TARGET_BUILD_APPS),)
 PRODUCT_MAKEFILES := \
-    $(LOCAL_DIR)/core.mk \
-    $(LOCAL_DIR)/generic.mk \
-    $(LOCAL_DIR)/full.mk
+    $(LOCAL_DIR)/aosp_arm.mk \
+    $(LOCAL_DIR)/full.mk \
+    $(LOCAL_DIR)/generic_armv5.mk \
+    $(LOCAL_DIR)/aosp_x86.mk \
+    $(LOCAL_DIR)/full_x86.mk \
+    $(LOCAL_DIR)/aosp_mips.mk \
+    $(LOCAL_DIR)/full_mips.mk \
+    $(LOCAL_DIR)/aosp_arm64.mk \
+    $(LOCAL_DIR)/aosp_mips64.mk \
+    $(LOCAL_DIR)/aosp_x86_64.mk
 else
 PRODUCT_MAKEFILES := \
     $(LOCAL_DIR)/core.mk \
     $(LOCAL_DIR)/generic.mk \
     $(LOCAL_DIR)/generic_x86.mk \
     $(LOCAL_DIR)/generic_mips.mk \
+    $(LOCAL_DIR)/aosp_arm.mk \
     $(LOCAL_DIR)/full.mk \
+    $(LOCAL_DIR)/aosp_x86.mk \
     $(LOCAL_DIR)/full_x86.mk \
+    $(LOCAL_DIR)/aosp_mips.mk \
     $(LOCAL_DIR)/full_mips.mk \
-    $(LOCAL_DIR)/vbox_x86.mk \
+    $(LOCAL_DIR)/aosp_arm64.mk \
+    $(LOCAL_DIR)/aosp_mips64.mk \
+    $(LOCAL_DIR)/aosp_x86_64.mk \
+    $(LOCAL_DIR)/full_x86_64.mk \
+    $(LOCAL_DIR)/sdk_phone_armv7.mk \
+    $(LOCAL_DIR)/sdk_phone_x86.mk \
+    $(LOCAL_DIR)/sdk_phone_mips.mk \
+    $(LOCAL_DIR)/sdk_phone_arm64.mk \
+    $(LOCAL_DIR)/sdk_phone_x86_64.mk \
+    $(LOCAL_DIR)/sdk_phone_mips64.mk \
     $(LOCAL_DIR)/sdk.mk \
     $(LOCAL_DIR)/sdk_x86.mk \
     $(LOCAL_DIR)/sdk_mips.mk \
-    $(LOCAL_DIR)/large_emu_hw.mk
+    $(LOCAL_DIR)/sdk_arm64.mk \
+    $(LOCAL_DIR)/sdk_x86_64.mk
 endif

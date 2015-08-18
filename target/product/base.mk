@@ -18,74 +18,53 @@
 PRODUCT_PACKAGES += \
     20-dns.conf \
     95-configured \
-    adb \
-    adbd \
+    appwidget \
+    appops \
     am \
     android.policy \
     android.test.runner \
     app_process \
     applypatch \
+    blkid \
     bmgr \
-    bootanimation \
     bugreport \
     content \
-    dbus-daemon \
-    debuggerd \
     dhcpcd \
     dhcpcd-run-hooks \
     dnsmasq \
-    dumpstate \
-    dumpsys \
+    dpm \
     framework \
     fsck_msdos \
-    gralloc.default \
-    gzip \
     ime \
-    init \
     input \
     javax.obex \
-    libEGL \
-    libETC1 \
-    libFFTEm \
-    libGLES_android \
-    libGLESv1_CM \
-    libGLESv2 \
-    libSR_AudioIn \
     libandroid \
     libandroid_runtime \
     libandroid_servers \
     libaudioeffect_jni \
     libaudioflinger \
-    libbinder \
+    libaudiopolicyservice \
+    libaudiopolicymanager \
     libbundlewrapper \
-    libc \
     libcamera_client \
     libcameraservice \
-    libchromium_net \
-    libctest \
-    libcutils \
-    libdbus \
     libdl \
-    libdrm1 \
-    libdrm1_jni \
+    libdrmclearkeyplugin \
+    libeffectproxy \
     libeffects \
-    libgui \
-    libhardware \
-    libhardware_legacy \
+    libinput \
+    libinputflinger \
     libiprouteutil \
-    libjni_latinime \
     libjnigraphics \
-    libjpeg \
-    liblog \
-    libm \
+    libldnhncr \
     libmedia \
     libmedia_jni \
     libmediaplayerservice \
     libmtp \
+    libnetd_client \
     libnetlink \
     libnetutils \
-    libpixelflinger \
-    libpower \
+    libpdfium \
     libreference-ril \
     libreverbwrapper \
     libril \
@@ -94,6 +73,8 @@ PRODUCT_PACKAGES += \
     libskia \
     libsonivox \
     libsoundpool \
+    libsoundtrigger \
+    libsoundtriggerservice \
     libsqlite \
     libstagefright \
     libstagefright_amrnb_common \
@@ -102,23 +83,14 @@ PRODUCT_PACKAGES += \
     libstagefright_foundation \
     libstagefright_omx \
     libstagefright_yuv \
-    libstdc++ \
-    libstlport \
-    libsurfaceflinger \
-    libsurfaceflinger_client \
-    libsystem_server \
-    libsysutils \
-    libthread_db \
-    libui \
     libusbhost \
     libutils \
     libvisualizer \
     libvorbisidec \
-    libwebcore \
-    libwpa_client \
-    linker \
-    logcat \
-    logwrapper \
+    libmediandk \
+    libwifi-service \
+    media \
+    media_cmd \
     mediaserver \
     monkey \
     mtpd \
@@ -126,22 +98,30 @@ PRODUCT_PACKAGES += \
     netcfg \
     netd \
     ping \
+    ping6 \
     platform.xml \
     pppd \
     pm \
     racoon \
     run-as \
     schedtest \
-    screenshot \
     sdcard \
-    service \
-    servicemanager \
     services \
-    surfaceflinger \
+    settings \
     svc \
-    system_server \
     tc \
-    toolbox \
     vdc \
-    vold
+    vold \
+    wm
 
+
+PRODUCT_COPY_FILES := $(call add-to-product-copy-files-if-exists,\
+    frameworks/base/preloaded-classes:system/etc/preloaded-classes)
+
+# Note: it is acceptable to not have a compiled-classes file. In that case, all boot classpath
+#       classes will be compiled.
+PRODUCT_COPY_FILES += $(call add-to-product-copy-files-if-exists,\
+    frameworks/base/compiled-classes:system/etc/compiled-classes)
+
+
+$(call inherit-product, $(SRC_TARGET_DIR)/product/embedded.mk)

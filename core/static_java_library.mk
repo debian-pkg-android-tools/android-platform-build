@@ -21,11 +21,15 @@
 
 LOCAL_UNINSTALLABLE_MODULE := true
 LOCAL_IS_STATIC_JAVA_LIBRARY := true
+LOCAL_MODULE_CLASS := JAVA_LIBRARIES
 
 # Hack to build static Java library with Android resource
 # See bug 5714516
 all_resources :=
+need_compile_res :=
+# A static Java library needs to explicily set LOCAL_RESOURCE_DIR.
 ifdef LOCAL_RESOURCE_DIR
+need_compile_res := true
 all_resources := $(strip \
     $(foreach dir, $(LOCAL_RESOURCE_DIR), \
       $(addprefix $(dir)/, \
@@ -35,7 +39,6 @@ all_resources := $(strip \
       ) \
     ))
 
-ifneq (,$(all_resources))
 # By default we should remove the R/Manifest classes from a static Java library,
 # because they will be regenerated in the app that uses it.
 # But if the static Java library will be used by a library, then we may need to
@@ -46,18 +49,25 @@ endif
 ifeq (none,$(LOCAL_JAR_EXCLUDE_FILES))
 LOCAL_JAR_EXCLUDE_FILES :=
 endif
-endif  # all_resources
+
+proguard_options_file :=
+
+intermediates.COMMON := $(call local-intermediates-dir,COMMON)
+ifneq ($(LOCAL_PROGUARD_ENABLED),custom)
+  proguard_options_file := $(intermediates.COMMON)/proguard_options
+endif
+LOCAL_PROGUARD_FLAGS := $(addprefix -include ,$(proguard_options_file)) $(LOCAL_PROGUARD_FLAGS)
+
 endif  # LOCAL_RESOURCE_DIR
+
+all_res_assets := $(all_resources)
 
 include $(BUILD_SYSTEM)/java_library.mk
 
-ifneq (,$(all_resources))
+ifeq (true,$(need_compile_res))
 R_file_stamp := $(LOCAL_INTERMEDIATE_SOURCE_DIR)/R.stamp
 
-ifeq ($(strip $(LOCAL_MANIFEST_FILE)),)
-LOCAL_MANIFEST_FILE := AndroidManifest.xml
-endif
-full_android_manifest := $(LOCAL_PATH)/$(LOCAL_MANIFEST_FILE)
+include $(BUILD_SYSTEM)/android_manifest.mk
 
 LOCAL_SDK_RES_VERSION:=$(strip $(LOCAL_SDK_RES_VERSION))
 ifeq ($(LOCAL_SDK_RES_VERSION),)
@@ -68,7 +78,7 @@ framework_res_package_export :=
 framework_res_package_export_deps :=
 # Please refer to package.mk
 ifneq ($(LOCAL_NO_STANDARD_LIBRARIES),true)
-ifneq ($(filter-out current,$(LOCAL_SDK_RES_VERSION))$(if $(TARGET_BUILD_APPS),$(filter current,$(LOCAL_SDK_RES_VERSION))),)
+ifneq ($(filter-out current system_current,$(LOCAL_SDK_RES_VERSION))$(if $(TARGET_BUILD_APPS),$(filter current system_current,$(LOCAL_SDK_RES_VERSION))),)
 framework_res_package_export := \
     $(HISTORICAL_SDK_VERSIONS_ROOT)/$(LOCAL_SDK_RES_VERSION)/android.jar
 framework_res_package_export_deps := $(framework_res_package_export)
@@ -88,13 +98,13 @@ $(R_file_stamp): PRIVATE_ANDROID_MANIFEST := $(full_android_manifest)
 $(R_file_stamp): PRIVATE_RESOURCE_PUBLICS_OUTPUT := $(intermediates.COMMON)/public_resources.xml
 $(R_file_stamp): PRIVATE_RESOURCE_DIR := $(LOCAL_RESOURCE_DIR)
 $(R_file_stamp): PRIVATE_AAPT_INCLUDES := $(framework_res_package_export)
-ifneq (,$(filter-out current, $(LOCAL_SDK_VERSION)))
+ifneq (,$(filter-out current system_current, $(LOCAL_SDK_VERSION)))
 $(R_file_stamp): PRIVATE_DEFAULT_APP_TARGET_SDK := $(LOCAL_SDK_VERSION)
 else
 $(R_file_stamp): PRIVATE_DEFAULT_APP_TARGET_SDK := $(DEFAULT_APP_TARGET_SDK)
 endif
 $(R_file_stamp): PRIVATE_ASSET_DIR :=
-$(R_file_stamp): PRIVATE_PROGUARD_OPTIONS_FILE :=
+$(R_file_stamp): PRIVATE_PROGUARD_OPTIONS_FILE := $(proguard_options_file)
 $(R_file_stamp): PRIVATE_MANIFEST_PACKAGE_NAME :=
 $(R_file_stamp): PRIVATE_MANIFEST_INSTRUMENTATION_FOR :=
 
@@ -108,6 +118,8 @@ ifneq ($(full_classes_jar),)
 $(full_classes_compiled_jar): $(R_file_stamp)
 endif
 
-endif  # $(all_resources) not empty
+endif  # need_compile_res
 
+# Reset internal variables.
+all_res_assets :=
 LOCAL_IS_STATIC_JAVA_LIBRARY :=

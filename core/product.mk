@@ -70,7 +70,11 @@ _product_var_list := \
     PRODUCT_LOCALES \
     PRODUCT_AAPT_CONFIG \
     PRODUCT_AAPT_PREF_CONFIG \
+    PRODUCT_AAPT_PREBUILT_DPI \
     PRODUCT_PACKAGES \
+    PRODUCT_PACKAGES_DEBUG \
+    PRODUCT_PACKAGES_ENG \
+    PRODUCT_PACKAGES_TESTS \
     PRODUCT_DEVICE \
     PRODUCT_MANUFACTURER \
     PRODUCT_BRAND \
@@ -83,15 +87,31 @@ _product_var_list := \
     PRODUCT_PACKAGE_OVERLAYS \
     DEVICE_PACKAGE_OVERLAYS \
     PRODUCT_TAGS \
+    PRODUCT_SDK_ATREE_FILES \
     PRODUCT_SDK_ADDON_NAME \
     PRODUCT_SDK_ADDON_COPY_FILES \
     PRODUCT_SDK_ADDON_COPY_MODULES \
     PRODUCT_SDK_ADDON_DOC_MODULES \
+    PRODUCT_SDK_ADDON_SYS_IMG_SOURCE_PROP \
     PRODUCT_DEFAULT_WIFI_CHANNELS \
     PRODUCT_DEFAULT_DEV_CERTIFICATE \
     PRODUCT_RESTRICT_VENDOR_FILES \
-    PRODUCT_FACTORY_RAMDISK_MODULES \
     PRODUCT_VENDOR_KERNEL_HEADERS \
+    PRODUCT_FACTORY_RAMDISK_MODULES \
+    PRODUCT_FACTORY_BUNDLE_MODULES \
+    PRODUCT_RUNTIMES \
+    PRODUCT_BOOT_JARS \
+    PRODUCT_SUPPORTS_VERITY \
+    PRODUCT_OEM_PROPERTIES \
+    PRODUCT_SYSTEM_PROPERTY_BLACKLIST \
+    PRODUCT_SYSTEM_SERVER_JARS \
+    PRODUCT_VERITY_SIGNING_KEY \
+    PRODUCT_SYSTEM_VERITY_PARTITION \
+    PRODUCT_VENDOR_VERITY_PARTITION \
+    PRODUCT_DEX_PREOPT_IMAGE_IN_DATA \
+    PRODUCT_DEX_PREOPT_MODULE_CONFIGS \
+    PRODUCT_DEX_PREOPT_DEFAULT_FLAGS \
+    PRODUCT_DEX_PREOPT_BOOT_FLAGS \
 
 
 define dump-product
@@ -166,7 +186,7 @@ $(if ,, \
     $(eval pb := $(strip $(PRODUCTS.$(p).PRODUCT_BRAND))) \
     $(if $(pb),,$(error $(p): PRODUCT_BRAND must be defined.)) \
     $(foreach cf,$(strip $(PRODUCTS.$(p).PRODUCT_COPY_FILES)), \
-      $(if $(filter 2,$(words $(subst :,$(space),$(cf)))),, \
+      $(if $(filter 2 3,$(words $(subst :,$(space),$(cf)))),, \
         $(error $(p): malformed COPY_FILE "$(cf)") \
        ) \
      ) \
@@ -203,8 +223,11 @@ endef
 
 
 _product_stash_var_list := $(_product_var_list) \
+	PRODUCT_BOOTCLASSPATH \
+	PRODUCT_SYSTEM_SERVER_CLASSPATH \
 	TARGET_ARCH \
 	TARGET_ARCH_VARIANT \
+	TARGET_CPU_VARIANT \
 	TARGET_BOARD_PLATFORM \
 	TARGET_BOARD_PLATFORM_GPU \
 	TARGET_BOARD_KERNEL_HEADERS \
@@ -230,28 +253,28 @@ _product_stash_var_list += \
 	BOARD_KERNEL_CMDLINE \
 	BOARD_KERNEL_BASE \
 	BOARD_HAVE_BLUETOOTH \
-	BOARD_HAVE_BLUETOOTH_BCM \
-	BOARD_VENDOR_QCOM_AMSS_VERSION \
 	BOARD_VENDOR_USE_AKMD \
 	BOARD_EGL_CFG \
 	BOARD_BOOTIMAGE_PARTITION_SIZE \
 	BOARD_RECOVERYIMAGE_PARTITION_SIZE \
 	BOARD_SYSTEMIMAGE_PARTITION_SIZE \
+	BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE \
 	BOARD_USERDATAIMAGE_PARTITION_SIZE \
 	BOARD_CACHEIMAGE_FILE_SYSTEM_TYPE \
 	BOARD_CACHEIMAGE_PARTITION_SIZE \
 	BOARD_FLASH_BLOCK_SIZE \
-	BOARD_SYSTEMIMAGE_PARTITION_SIZE \
-	BOARD_VENDOR_QCOM_GPS_LOC_API_HARDWARE \
-	BOARD_VENDOR_QCOM_GPS_LOC_API_AMSS_VERSION \
+	BOARD_VENDORIMAGE_PARTITION_SIZE \
+	BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE \
 	BOARD_INSTALLER_CMDLINE \
 
 
 _product_stash_var_list += \
-	DEFAULT_SYSTEM_DEV_CERTIFICATE
+	DEFAULT_SYSTEM_DEV_CERTIFICATE \
+	WITH_DEXPREOPT \
+	WITH_DEXPREOPT_BOOT_IMG_ONLY
 
 #
-# Stash vaues of the variables in _product_stash_var_list.
+# Stash values of the variables in _product_stash_var_list.
 # $(1): Renamed prefix
 #
 define stash-product-vars
@@ -280,4 +303,15 @@ endef
 
 define add-to-product-copy-files-if-exists
 $(if $(wildcard $(word 1,$(subst :, ,$(1)))),$(1))
+endef
+
+# whitespace placeholder when we record module's dex-preopt config.
+_PDPMC_SP_PLACE_HOLDER := |@SP@|
+# Set up dex-preopt config for a module.
+# $(1) list of module names
+# $(2) the modules' dex-preopt config
+define add-product-dex-preopt-module-config
+$(eval _c := $(subst $(space),$(_PDPMC_SP_PLACE_HOLDER),$(strip $(2))))\
+$(eval PRODUCT_DEX_PREOPT_MODULE_CONFIGS += \
+  $(foreach m,$(1),$(m)=$(_c)))
 endef

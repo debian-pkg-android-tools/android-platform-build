@@ -22,11 +22,9 @@
 PRODUCT_PACKAGES := \
     libfwdlockengine \
     OpenWnn \
-    PinyinIME \
     libWnnEngDic \
     libWnnJpnDic \
     libwnndict \
-    VideoEditor \
     WAPPushManager
 
 PRODUCT_PACKAGES += \
@@ -37,7 +35,8 @@ PRODUCT_PACKAGES += \
     MagicSmokeWallpapers \
     NoiseField \
     PhaseBeam \
-    VisualizationWallpapers
+    VisualizationWallpapers \
+    PhotoTable
 
 # Additional settings used in all AOSP builds
 PRODUCT_PROPERTY_OVERRIDES := \
@@ -47,6 +46,9 @@ PRODUCT_PROPERTY_OVERRIDES := \
 
 # Put en_US first in the list, so make it default.
 PRODUCT_LOCALES := en_US
+
+# Include drawables for all densities
+PRODUCT_AAPT_CONFIG := normal
 
 # Get some sounds
 $(call inherit-product-if-exists, frameworks/base/data/sounds/AllAudio.mk)

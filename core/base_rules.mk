@@ -34,12 +34,14 @@ ifdef LOCAL_IS_HOST_MODULE
   ifneq ($(LOCAL_IS_HOST_MODULE),true)
     $(error $(LOCAL_PATH): LOCAL_IS_HOST_MODULE must be "true" or empty, not "$(LOCAL_IS_HOST_MODULE)")
   endif
-  my_prefix:=HOST_
-  my_host:=host-
+  my_prefix := HOST_
+  my_host := host-
 else
-  my_prefix:=TARGET_
-  my_host:=
+  my_prefix := TARGET_
+  my_host :=
 endif
+
+my_module_tags := $(LOCAL_MODULE_TAGS)
 
 ###########################################################
 ## Validate and define fallbacks for input LOCAL_* variables.
@@ -50,17 +52,17 @@ endif
 #$(shell rm -f tag-list.csv)
 #tag-list-first-time := false
 #endif
-#$(shell echo $(lastword $(filter-out config/% out/%,$(MAKEFILE_LIST))),$(LOCAL_MODULE),$(strip $(LOCAL_MODULE_CLASS)),$(subst $(space),$(comma),$(sort $(LOCAL_MODULE_TAGS))) >> tag-list.csv)
+#$(shell echo $(lastword $(filter-out config/% out/%,$(MAKEFILE_LIST))),$(LOCAL_MODULE),$(strip $(LOCAL_MODULE_CLASS)),$(subst $(space),$(comma),$(sort $(my_module_tags))) >> tag-list.csv)
 
 LOCAL_UNINSTALLABLE_MODULE := $(strip $(LOCAL_UNINSTALLABLE_MODULE))
-LOCAL_MODULE_TAGS := $(sort $(LOCAL_MODULE_TAGS))
-ifeq (,$(LOCAL_MODULE_TAGS))
-  LOCAL_MODULE_TAGS := optional
+my_module_tags := $(sort $(my_module_tags))
+ifeq (,$(my_module_tags))
+  my_module_tags := optional
 endif
 
 # User tags are not allowed anymore.  Fail early because it will not be installed
 # like it used to be.
-ifneq ($(filter $(LOCAL_MODULE_TAGS),user),)
+ifneq ($(filter $(my_module_tags),user),)
   $(warning *** Module name: $(LOCAL_MODULE))
   $(warning *** Makefile location: $(LOCAL_MODULE_MAKEFILE))
   $(warning * )
@@ -75,22 +77,19 @@ endif
 # Only the tags mentioned in this test are expected to be set by module
 # makefiles. Anything else is either a typo or a source of unexpected
 # behaviors.
-ifneq ($(filter-out debug eng tests optional samples shell_ash shell_mksh,$(LOCAL_MODULE_TAGS)),)
-$(warning unusual tags $(LOCAL_MODULE_TAGS) on $(LOCAL_MODULE) at $(LOCAL_PATH))
+ifneq ($(filter-out debug eng tests optional samples,$(my_module_tags)),)
+$(warning unusual tags $(my_module_tags) on $(LOCAL_MODULE) at $(LOCAL_PATH))
 endif
-
-
 
 # Add implicit tags.
 #
 # If the local directory or one of its parents contains a MODULE_LICENSE_GPL
-# file, tag the module as "gnu".  Search for "*_GPL*" and "*_MPL*" so that we can also
-# find files like MODULE_LICENSE_GPL_AND_AFL but exclude files like
-# MODULE_LICENSE_LGPL.
+# file, tag the module as "gnu".  Search for "*_GPL*", "*_LGPL*" and "*_MPL*"
+# so that we can also find files like MODULE_LICENSE_GPL_AND_AFL
 #
-gpl_license_file := $(call find-parent-file,$(LOCAL_PATH),MODULE_LICENSE*_GPL* MODULE_LICENSE*_MPL*)
+gpl_license_file := $(call find-parent-file,$(LOCAL_PATH),MODULE_LICENSE*_GPL* MODULE_LICENSE*_MPL* MODULE_LICENSE*_LGPL*)
 ifneq ($(gpl_license_file),)
-  LOCAL_MODULE_TAGS += gnu
+  my_module_tags += gnu
   ALL_GPL_MODULE_LICENSE_FILES := $(sort $(ALL_GPL_MODULE_LICENSE_FILES) $(gpl_license_file))
 endif
 
@@ -99,25 +98,42 @@ ifneq ($(words $(LOCAL_MODULE_CLASS)),1)
   $(error $(LOCAL_PATH): LOCAL_MODULE_CLASS must contain exactly one word, not "$(LOCAL_MODULE_CLASS)")
 endif
 
-ifneq (true,$(LOCAL_UNINSTALLABLE_MODULE))
-ifdef LOCAL_IS_HOST_MODULE
-  partition_tag :=
-else
-ifeq (true,$(LOCAL_PROPRIETARY_MODULE))
-  partition_tag := _VENDOR
-else
-  # The definition of should-install-to-system will be different depending
-  # on which goal (e.g., sdk or just droid) is being built.
-  partition_tag := $(if $(call should-install-to-system,$(LOCAL_MODULE_TAGS)),,_DATA)
-endif
-endif
+my_32_64_bit_suffix := $(if $($(LOCAL_2ND_ARCH_VAR_PREFIX)$(my_prefix)IS_64_BIT),64,32)
 
-LOCAL_MODULE_PATH := $(strip $(LOCAL_MODULE_PATH))
-ifeq ($(LOCAL_MODULE_PATH),)
-  LOCAL_MODULE_PATH := $($(my_prefix)OUT$(partition_tag)_$(LOCAL_MODULE_CLASS))
-  ifeq ($(strip $(LOCAL_MODULE_PATH)),)
-    $(error $(LOCAL_PATH): unhandled LOCAL_MODULE_CLASS "$(LOCAL_MODULE_CLASS)")
+ifneq (true,$(LOCAL_UNINSTALLABLE_MODULE))
+my_multilib_module_path := $(strip $(LOCAL_MODULE_PATH_$(my_32_64_bit_suffix)))
+ifdef my_multilib_module_path
+my_module_path := $(my_multilib_module_path)
+else
+my_module_path := $(strip $(LOCAL_MODULE_PATH))
+endif
+my_module_relative_path := $(strip $(LOCAL_MODULE_RELATIVE_PATH))
+ifeq ($(my_module_path),)
+  ifdef LOCAL_IS_HOST_MODULE
+    partition_tag :=
+  else
+  ifeq (true,$(LOCAL_PROPRIETARY_MODULE))
+    partition_tag := _VENDOR
+  else ifeq (true,$(LOCAL_OEM_MODULE))
+    partition_tag := _OEM
+  else
+    # The definition of should-install-to-system will be different depending
+    # on which goal (e.g., sdk or just droid) is being built.
+    partition_tag := $(if $(call should-install-to-system,$(my_module_tags)),,_DATA)
   endif
+  endif
+  install_path_var := $(LOCAL_2ND_ARCH_VAR_PREFIX)$(my_prefix)OUT$(partition_tag)_$(LOCAL_MODULE_CLASS)
+  ifeq (true,$(LOCAL_PRIVILEGED_MODULE))
+    install_path_var := $(install_path_var)_PRIVILEGED
+  endif
+
+  my_module_path := $($(install_path_var))
+  ifeq ($(strip $(my_module_path)),)
+    $(error $(LOCAL_PATH): unhandled install path "$(install_path_var) for $(LOCAL_MODULE)")
+  endif
+endif
+ifneq ($(my_module_relative_path),)
+  my_module_path := $(my_module_path)/$(my_module_relative_path)
 endif
 endif # not LOCAL_UNINSTALLABLE_MODULE
 
@@ -125,30 +141,28 @@ ifneq ($(strip $(LOCAL_BUILT_MODULE)$(LOCAL_INSTALLED_MODULE)),)
   $(error $(LOCAL_PATH): LOCAL_BUILT_MODULE and LOCAL_INSTALLED_MODULE must not be defined by component makefiles)
 endif
 
+my_register_name := $(LOCAL_MODULE)
+ifdef LOCAL_2ND_ARCH_VAR_PREFIX
+ifndef LOCAL_NO_2ND_ARCH_MODULE_SUFFIX
+my_register_name := $(LOCAL_MODULE)$($(my_prefix)2ND_ARCH_MODULE_SUFFIX)
+endif
+endif
 # Make sure that this IS_HOST/CLASS/MODULE combination is unique.
 module_id := MODULE.$(if \
-    $(LOCAL_IS_HOST_MODULE),HOST,TARGET).$(LOCAL_MODULE_CLASS).$(LOCAL_MODULE)
+    $(LOCAL_IS_HOST_MODULE),HOST,TARGET).$(LOCAL_MODULE_CLASS).$(my_register_name)
 ifdef $(module_id)
 $(error $(LOCAL_PATH): $(module_id) already defined by $($(module_id)))
 endif
 $(module_id) := $(LOCAL_PATH)
 
-intermediates := $(call local-intermediates-dir)
+intermediates := $(call local-intermediates-dir,,$(LOCAL_2ND_ARCH_VAR_PREFIX))
 intermediates.COMMON := $(call local-intermediates-dir,COMMON)
+generated_sources_dir := $(call local-generated-sources-dir)
 
 ###########################################################
 # Pick a name for the intermediate and final targets
 ###########################################################
-LOCAL_MODULE_STEM := $(strip $(LOCAL_MODULE_STEM))
-ifeq ($(LOCAL_MODULE_STEM),)
-  LOCAL_MODULE_STEM := $(LOCAL_MODULE)
-endif
-LOCAL_INSTALLED_MODULE_STEM := $(LOCAL_MODULE_STEM)$(LOCAL_MODULE_SUFFIX)
-
-LOCAL_BUILT_MODULE_STEM := $(strip $(LOCAL_BUILT_MODULE_STEM))
-ifeq ($(LOCAL_BUILT_MODULE_STEM),)
-  LOCAL_BUILT_MODULE_STEM := $(LOCAL_INSTALLED_MODULE_STEM)
-endif
+include $(BUILD_SYSTEM)/configure_module_stem.mk
 
 # OVERRIDE_BUILT_MODULE_PATH is only allowed to be used by the
 # internal SHARED_LIBRARIES build files.
@@ -161,11 +175,17 @@ ifdef OVERRIDE_BUILT_MODULE_PATH
 else
   built_module_path := $(intermediates)
 endif
-LOCAL_BUILT_MODULE := $(built_module_path)/$(LOCAL_BUILT_MODULE_STEM)
-built_module_path :=
+LOCAL_BUILT_MODULE := $(built_module_path)/$(my_built_module_stem)
 
 ifneq (true,$(LOCAL_UNINSTALLABLE_MODULE))
-  LOCAL_INSTALLED_MODULE := $(LOCAL_MODULE_PATH)/$(LOCAL_INSTALLED_MODULE_STEM)
+  # Apk and its attachments reside in its own subdir.
+  ifeq ($(LOCAL_MODULE_CLASS),APPS)
+  # framework-res.apk doesn't like the additional layer.
+  ifneq ($(LOCAL_NO_STANDARD_LIBRARIES),true)
+    my_module_path := $(my_module_path)/$(LOCAL_MODULE)
+  endif
+  endif
+  LOCAL_INSTALLED_MODULE := $(my_module_path)/$(my_installed_module_stem)
 endif
 
 # Assemble the list of targets to create PRIVATE_ variables for.
@@ -183,18 +203,18 @@ ifneq ($(strip $(aidl_sources)),)
 aidl_java_sources := $(patsubst %.aidl,%.java,$(addprefix $(intermediates.COMMON)/src/, $(aidl_sources)))
 aidl_sources := $(addprefix $(TOP_DIR)$(LOCAL_PATH)/, $(aidl_sources))
 
-ifeq (,$(TARGET_BUILD_APPS))
-LOCAL_AIDL_INCLUDES += $(FRAMEWORKS_BASE_JAVA_SRC_DIRS)
-endif
 aidl_preprocess_import :=
 LOCAL_SDK_VERSION:=$(strip $(LOCAL_SDK_VERSION))
 ifdef LOCAL_SDK_VERSION
-ifeq ($(LOCAL_SDK_VERSION)$(TARGET_BUILD_APPS),current)
+ifneq ($(filter current system_current, $(LOCAL_SDK_VERSION)$(TARGET_BUILD_APPS)),)
   # LOCAL_SDK_VERSION is current and no TARGET_BUILD_APPS
   aidl_preprocess_import := $(TARGET_OUT_COMMON_INTERMEDIATES)/framework.aidl
 else
   aidl_preprocess_import := $(HISTORICAL_SDK_VERSIONS_ROOT)/$(LOCAL_SDK_VERSION)/framework.aidl
-endif # !current
+endif # not current or system_current
+else
+# build against the platform.
+LOCAL_AIDL_INCLUDES += $(FRAMEWORKS_BASE_JAVA_SRC_DIRS)
 endif # LOCAL_SDK_VERSION
 $(aidl_java_sources): PRIVATE_AIDL_FLAGS := -b $(addprefix -p,$(aidl_preprocess_import)) -I$(LOCAL_PATH) -I$(LOCAL_PATH)/src $(addprefix -I,$(LOCAL_AIDL_INCLUDES))
 
@@ -218,7 +238,7 @@ event_log_tags := $(addprefix $(LOCAL_PATH)/,$(logtags_sources))
 
 # Emit a java source file with constants for the tags, if
 # LOCAL_MODULE_CLASS is "APPS" or "JAVA_LIBRARIES".
-ifneq ($(strip $(filter $(LOCAL_MODULE_CLASS),APPS JAVA_LIBRARIES)),)
+ifneq ($(filter $(LOCAL_MODULE_CLASS),APPS JAVA_LIBRARIES),)
 
 logtags_java_sources := $(patsubst %.logtags,%.java,$(addprefix $(intermediates.COMMON)/src/, $(logtags_sources)))
 logtags_sources := $(addprefix $(TOP_DIR)$(LOCAL_PATH)/, $(logtags_sources))
@@ -259,9 +279,14 @@ $(proto_java_sources_file_stamp): PRIVATE_PROTO_JAVA_OUTPUT_DIR := $(proto_java_
 ifeq ($(LOCAL_PROTOC_OPTIMIZE_TYPE),micro)
 $(proto_java_sources_file_stamp): PRIVATE_PROTO_JAVA_OUTPUT_OPTION := --javamicro_out
 else
+  ifeq ($(LOCAL_PROTOC_OPTIMIZE_TYPE),nano)
+$(proto_java_sources_file_stamp): PRIVATE_PROTO_JAVA_OUTPUT_OPTION := --javanano_out
+  else
 $(proto_java_sources_file_stamp): PRIVATE_PROTO_JAVA_OUTPUT_OPTION := --java_out
+  endif
 endif
 $(proto_java_sources_file_stamp): PRIVATE_PROTOC_FLAGS := $(LOCAL_PROTOC_FLAGS)
+$(proto_java_sources_file_stamp): PRIVATE_PROTO_JAVA_OUTPUT_PARAMS := $(LOCAL_PROTO_JAVA_OUTPUT_PARAMS)
 $(proto_java_sources_file_stamp) : $(proto_sources_fullpath) $(PROTOC)
 	$(call transform-proto-to-java)
 
@@ -346,8 +371,11 @@ else
 endif # java_resource_file_groups
 
 ## PRIVATE java vars ######################################
-
-ifneq ($(strip $(all_java_sources)$(all_res_assets))$(LOCAL_STATIC_JAVA_LIBRARIES),)
+# LOCAL_SOURCE_FILES_ALL_GENERATED is set only if the module does not have static source files,
+# but generated source files in its LOCAL_INTERMEDIATE_SOURCE_DIR.
+# You have to set up the dependency in some other way.
+need_compile_java := $(strip $(all_java_sources)$(all_res_assets))$(LOCAL_STATIC_JAVA_LIBRARIES)$(filter true,$(LOCAL_SOURCE_FILES_ALL_GENERATED))
+ifdef need_compile_java
 
 full_static_java_libs := \
     $(foreach lib,$(LOCAL_STATIC_JAVA_LIBRARIES), \
@@ -361,18 +389,19 @@ $(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_JAVA_SOURCES := $(all_java_sources)
 $(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_JAVA_OBJECTS := $(patsubst %.java,%.class,$(LOCAL_SRC_FILES))
 ifeq ($(my_prefix),TARGET_)
 ifeq ($(LOCAL_SDK_VERSION),)
-$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_BOOTCLASSPATH := -bootclasspath $(call java-lib-files,core)
+$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_BOOTCLASSPATH := -bootclasspath $(call java-lib-files,core-libart)
 else
 ifeq ($(LOCAL_SDK_VERSION)$(TARGET_BUILD_APPS),current)
 # LOCAL_SDK_VERSION is current and no TARGET_BUILD_APPS.
 $(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_BOOTCLASSPATH := -bootclasspath $(call java-lib-files,android_stubs_current)
+else ifeq ($(LOCAL_SDK_VERSION)$(TARGET_BUILD_APPS),system_current)
+$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_BOOTCLASSPATH := -bootclasspath $(call java-lib-files,android_system_stubs_current)
 else
 $(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_BOOTCLASSPATH := -bootclasspath $(call java-lib-files,sdk_v$(LOCAL_SDK_VERSION))
-endif # current
+endif # current or system_current
 endif # LOCAL_SDK_VERSION
 endif # TARGET_
 $(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_RESOURCE_DIR := $(LOCAL_RESOURCE_DIR)
-$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_EXTRA_JAR_ARGS := $(extra_jar_args)
 $(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_ASSET_DIR := $(LOCAL_ASSET_DIR)
 $(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_STATIC_JAVA_LIBRARIES := $(full_static_java_libs)
 
@@ -382,23 +411,39 @@ $(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_STATIC_JAVA_LIBRARIES := $(full_static_ja
 #                 to guarantee that the files in full_java_libs will
 #                 be up-to-date.
 ifdef LOCAL_IS_HOST_MODULE
-ifeq ($(LOCAL_BUILD_HOST_DEX),true)
-$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_BOOTCLASSPATH := -bootclasspath $(call java-lib-files,core-hostdex,$(LOCAL_IS_HOST_MODULE))
+ifeq ($(USE_CORE_LIB_BOOTCLASSPATH),true)
+$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_BOOTCLASSPATH := -bootclasspath $(call java-lib-deps,core-libart-hostdex,$(LOCAL_IS_HOST_MODULE))
 
-full_java_libs := $(call java-lib-files,$(LOCAL_JAVA_LIBRARIES),$(LOCAL_IS_HOST_MODULE))
+full_shared_java_libs := $(call java-lib-files,$(LOCAL_JAVA_LIBRARIES),$(LOCAL_IS_HOST_MODULE))
 full_java_lib_deps := $(call java-lib-deps,$(LOCAL_JAVA_LIBRARIES),$(LOCAL_IS_HOST_MODULE))
 else
 $(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_BOOTCLASSPATH :=
 
-full_java_libs := $(addprefix $(HOST_OUT_JAVA_LIBRARIES)/,$(addsuffix $(COMMON_JAVA_PACKAGE_SUFFIX),$(LOCAL_JAVA_LIBRARIES)))
-full_java_lib_deps := $(full_java_libs)
-endif # LOCAL_BUILD_HOST_DEX
-else
-full_java_libs := $(call java-lib-files,$(LOCAL_JAVA_LIBRARIES),$(LOCAL_IS_HOST_MODULE))
+full_shared_java_libs := $(addprefix $(HOST_OUT_JAVA_LIBRARIES)/,\
+    $(addsuffix $(COMMON_JAVA_PACKAGE_SUFFIX),$(LOCAL_JAVA_LIBRARIES)))
+full_java_lib_deps := $(full_shared_java_libs)
+endif # USE_CORE_LIB_BOOTCLASSPATH
+else # !LOCAL_IS_HOST_MODULE
+full_shared_java_libs := $(call java-lib-files,$(LOCAL_JAVA_LIBRARIES),$(LOCAL_IS_HOST_MODULE))
 full_java_lib_deps := $(call java-lib-deps,$(LOCAL_JAVA_LIBRARIES),$(LOCAL_IS_HOST_MODULE))
 endif # !LOCAL_IS_HOST_MODULE
-full_java_libs += $(full_static_java_libs) $(LOCAL_CLASSPATH)
+full_java_libs := $(full_shared_java_libs) $(full_static_java_libs) $(LOCAL_CLASSPATH)
 full_java_lib_deps += $(full_static_java_libs) $(LOCAL_CLASSPATH)
+
+# This is set by packages that are linking to other packages that export
+# shared libraries, allowing them to make use of the code in the linked apk.
+apk_libraries := $(sort $(LOCAL_APK_LIBRARIES) $(LOCAL_RES_LIBRARIES))
+ifneq ($(apk_libraries),)
+  link_apk_libraries := \
+      $(foreach lib,$(apk_libraries), \
+        $(call intermediates-dir-for, \
+              APPS,$(lib),,COMMON)/classes.jar)
+
+  # link against the jar with full original names (before proguard processing).
+  full_shared_java_libs += $(link_apk_libraries)
+  full_java_libs += $(link_apk_libraries)
+  full_java_lib_deps += $(link_apk_libraries)
+endif
 
 # This is set by packages that contain instrumentation, allowing them to
 # link against the package they are instrumenting.  Currently only one such
@@ -410,16 +455,18 @@ ifdef LOCAL_INSTRUMENTATION_FOR
         $(LOCAL_PATH): Multiple LOCAL_INSTRUMENTATION_FOR members defined)
   endif
 
-  link_instr_intermediates_dir := $(call intermediates-dir-for, \
-      APPS,$(LOCAL_INSTRUMENTATION_FOR))
   link_instr_intermediates_dir.COMMON := $(call intermediates-dir-for, \
       APPS,$(LOCAL_INSTRUMENTATION_FOR),,COMMON)
-
   # link against the jar with full original names (before proguard processing).
-  full_java_libs += $(link_instr_intermediates_dir.COMMON)/classes.jar
-  full_java_lib_deps += $(link_instr_intermediates_dir.COMMON)/classes.jar
+  link_instr_classes_jar := $(link_instr_intermediates_dir.COMMON)/classes.jar
+  full_java_libs += $(link_instr_classes_jar)
+  full_java_lib_deps += $(link_instr_classes_jar)
 endif
 
+endif  # need_compile_java
+
+# We may want to add jar manifest or jar resource files even if there is no java code at all.
+$(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_EXTRA_JAR_ARGS := $(extra_jar_args)
 jar_manifest_file :=
 ifneq ($(strip $(LOCAL_JAR_MANIFEST)),)
 jar_manifest_file := $(LOCAL_PATH)/$(LOCAL_JAR_MANIFEST)
@@ -428,19 +475,15 @@ else
 $(LOCAL_INTERMEDIATE_TARGETS): PRIVATE_JAR_MANIFEST :=
 endif
 
-endif
-
-
 ###########################################################
 ## make clean- targets
 ###########################################################
-cleantarget := clean-$(LOCAL_MODULE)
-$(cleantarget) : PRIVATE_MODULE := $(LOCAL_MODULE)
+cleantarget := clean-$(my_register_name)
+$(cleantarget) : PRIVATE_MODULE := $(my_register_name)
 $(cleantarget) : PRIVATE_CLEAN_FILES := \
-		$(PRIVATE_CLEAN_FILES) \
-		$(LOCAL_BUILT_MODULE) \
-		$(LOCAL_INSTALLED_MODULE) \
-		$(intermediates)
+    $(LOCAL_BUILT_MODULE) \
+    $(LOCAL_INSTALLED_MODULE) \
+    $(intermediates)
 $(cleantarget)::
 	@echo "Clean: $(PRIVATE_MODULE)"
 	$(hide) rm -rf $(PRIVATE_CLEAN_FILES)
@@ -449,10 +492,24 @@ $(cleantarget)::
 ## Common definitions for module.
 ###########################################################
 
+# aapt doesn't accept multiple --extra-packages flags.
+# We have to collapse them into a single --extra-packages flag here.
+LOCAL_AAPT_FLAGS := $(strip $(LOCAL_AAPT_FLAGS))
+ifdef LOCAL_AAPT_FLAGS
+ifeq ($(filter 0 1,$(words $(filter --extra-packages,$(LOCAL_AAPT_FLAGS)))),)
+aapt_flags := $(subst --extra-packages$(space),--extra-packages@,$(LOCAL_AAPT_FLAGS))
+aapt_flags_extra_packages := $(patsubst --extra-packages@%,%,$(filter --extra-packages@%,$(aapt_flags)))
+aapt_flags_extra_packages := $(sort $(subst :,$(space),$(aapt_flags_extra_packages)))
+LOCAL_AAPT_FLAGS := $(filter-out --extra-packages@%,$(aapt_flags)) \
+    --extra-packages $(subst $(space),:,$(aapt_flags_extra_packages))
+aapt_flags_extra_packages :=
+aapt_flags :=
+endif
+endif
+
 # Propagate local configuration options to this target.
 $(LOCAL_INTERMEDIATE_TARGETS) : PRIVATE_PATH:=$(LOCAL_PATH)
-$(LOCAL_INTERMEDIATE_TARGETS) : PRIVATE_POST_PROCESS_COMMAND:= $(LOCAL_POST_PROCESS_COMMAND)
-$(LOCAL_INTERMEDIATE_TARGETS) : PRIVATE_AAPT_FLAGS:= $(LOCAL_AAPT_FLAGS)
+$(LOCAL_INTERMEDIATE_TARGETS) : PRIVATE_AAPT_FLAGS:= $(LOCAL_AAPT_FLAGS) $(PRODUCT_AAPT_FLAGS)
 $(LOCAL_INTERMEDIATE_TARGETS) : PRIVATE_JAVA_LIBRARIES:= $(LOCAL_JAVA_LIBRARIES)
 $(LOCAL_INTERMEDIATE_TARGETS) : PRIVATE_MANIFEST_PACKAGE_NAME:= $(LOCAL_MANIFEST_PACKAGE_NAME)
 $(LOCAL_INTERMEDIATE_TARGETS) : PRIVATE_MANIFEST_INSTRUMENTATION_FOR:= $(LOCAL_MANIFEST_INSTRUMENTATION_FOR)
@@ -463,14 +520,16 @@ $(LOCAL_INTERMEDIATE_TARGETS) : PRIVATE_HOST:= $(my_host)
 
 $(LOCAL_INTERMEDIATE_TARGETS) : PRIVATE_INTERMEDIATES_DIR:= $(intermediates)
 
+$(LOCAL_INTERMEDIATE_TARGETS) : PRIVATE_2ND_ARCH_VAR_PREFIX := $(LOCAL_2ND_ARCH_VAR_PREFIX)
+
 # Tell the module and all of its sub-modules who it is.
-$(LOCAL_INTERMEDIATE_TARGETS) : PRIVATE_MODULE:= $(LOCAL_MODULE)
+$(LOCAL_INTERMEDIATE_TARGETS) : PRIVATE_MODULE:= $(my_register_name)
 
 # Provide a short-hand for building this module.
 # We name both BUILT and INSTALLED in case
 # LOCAL_UNINSTALLABLE_MODULE is set.
-.PHONY: $(LOCAL_MODULE)
-$(LOCAL_MODULE): $(LOCAL_BUILT_MODULE) $(LOCAL_INSTALLED_MODULE)
+.PHONY: $(my_register_name)
+$(my_register_name): $(LOCAL_BUILT_MODULE) $(LOCAL_INSTALLED_MODULE)
 
 ###########################################################
 ## Module installation rule
@@ -485,34 +544,16 @@ ifndef LOCAL_UNINSTALLABLE_MODULE
   # Define a copy rule to install the module.
   # acp and libraries that it uses can't use acp for
   # installation;  hence, LOCAL_ACP_UNAVAILABLE.
+$(LOCAL_INSTALLED_MODULE): PRIVATE_POST_INSTALL_CMD := $(LOCAL_POST_INSTALL_CMD)
 ifneq ($(LOCAL_ACP_UNAVAILABLE),true)
 $(LOCAL_INSTALLED_MODULE): $(LOCAL_BUILT_MODULE) | $(ACP)
 	@echo "Install: $@"
 	$(copy-file-to-new-target)
+	$(PRIVATE_POST_INSTALL_CMD)
 else
 $(LOCAL_INSTALLED_MODULE): $(LOCAL_BUILT_MODULE)
 	@echo "Install: $@"
 	$(copy-file-to-target-with-cp)
-endif
-
-ifdef LOCAL_DEX_PREOPT
-installed_odex := $(basename $(LOCAL_INSTALLED_MODULE)).odex
-built_odex := $(basename $(LOCAL_BUILT_MODULE)).odex
-$(installed_odex) : $(built_odex) | $(ACP)
-	@echo "Install: $@"
-	$(copy-file-to-target)
-
-$(LOCAL_INSTALLED_MODULE) : $(installed_odex)
-endif
-
-# All host modules that are not tagged with optional are automatically installed.
-# Save the installed files in ALL_HOST_INSTALLED_FILES.
-ifeq ($(LOCAL_IS_HOST_MODULE),true)
-  ALL_HOST_INSTALLED_FILES += $(LOCAL_INSTALLED_MODULE)
-  ifneq ($(filter debug eng tests, $(LOCAL_MODULE_TAGS)),)
-    $(warning $(LOCAL_MODULE_MAKEFILE): Module "$(LOCAL_MODULE)" has useless module tags: $(filter debug eng tests, $(LOCAL_MODULE_TAGS)). It will be installed anyway.)
-    LOCAL_MODULE_TAGS := $(filter-out debug eng tests, $(LOCAL_MODULE_TAGS))
-  endif
 endif
 
 endif # !LOCAL_UNINSTALLABLE_MODULE
@@ -522,13 +563,14 @@ endif # !LOCAL_UNINSTALLABLE_MODULE
 ## CHECK_BUILD goals
 ###########################################################
 
+ifdef java_alternative_checked_module
+  LOCAL_CHECKED_MODULE := $(java_alternative_checked_module)
+endif
+
 # If nobody has defined a more specific module for the
-# checked modules, use LOCAL_BUILT_MODULE.  This was old
-# behavior, so it should be a safe default.
+# checked modules, use LOCAL_BUILT_MODULE.
 ifndef LOCAL_CHECKED_MODULE
-  ifndef LOCAL_SDK_VERSION
-    LOCAL_CHECKED_MODULE := $(LOCAL_BUILT_MODULE)
-  endif
+  LOCAL_CHECKED_MODULE := $(LOCAL_BUILT_MODULE)
 endif
 
 # If they request that this module not be checked, then don't.
@@ -537,65 +579,112 @@ endif
 ifdef LOCAL_DONT_CHECK_MODULE
   LOCAL_CHECKED_MODULE :=
 endif
+# Don't check build target module defined for the 2nd arch
+ifndef LOCAL_IS_HOST_MODULE
+ifdef LOCAL_2ND_ARCH_VAR_PREFIX
+  LOCAL_CHECKED_MODULE :=
+endif
+endif
 
 ###########################################################
 ## Register with ALL_MODULES
 ###########################################################
 
-ALL_MODULES += $(LOCAL_MODULE)
+ALL_MODULES += $(my_register_name)
 
 # Don't use += on subvars, or else they'll end up being
 # recursively expanded.
-ALL_MODULES.$(LOCAL_MODULE).CLASS := \
-    $(ALL_MODULES.$(LOCAL_MODULE).CLASS) $(LOCAL_MODULE_CLASS)
-ALL_MODULES.$(LOCAL_MODULE).PATH := \
-    $(ALL_MODULES.$(LOCAL_MODULE).PATH) $(LOCAL_PATH)
-ALL_MODULES.$(LOCAL_MODULE).TAGS := \
-    $(ALL_MODULES.$(LOCAL_MODULE).TAGS) $(LOCAL_MODULE_TAGS)
-ALL_MODULES.$(LOCAL_MODULE).CHECKED := \
-    $(ALL_MODULES.$(LOCAL_MODULE).CHECKED) $(LOCAL_CHECKED_MODULE)
-ALL_MODULES.$(LOCAL_MODULE).BUILT := \
-    $(ALL_MODULES.$(LOCAL_MODULE).BUILT) $(LOCAL_BUILT_MODULE)
-ALL_MODULES.$(LOCAL_MODULE).INSTALLED := \
-    $(ALL_MODULES.$(LOCAL_MODULE).INSTALLED) $(LOCAL_INSTALLED_MODULE)
-ALL_MODULES.$(LOCAL_MODULE).REQUIRED := \
-    $(ALL_MODULES.$(LOCAL_MODULE).REQUIRED) $(LOCAL_REQUIRED_MODULES)
-ALL_MODULES.$(LOCAL_MODULE).EVENT_LOG_TAGS := \
-    $(ALL_MODULES.$(LOCAL_MODULE).EVENT_LOG_TAGS) $(event_log_tags)
-ALL_MODULES.$(LOCAL_MODULE).INTERMEDIATE_SOURCE_DIR := \
-    $(ALL_MODULES.$(LOCAL_MODULE).INTERMEDIATE_SOURCE_DIR) $(LOCAL_INTERMEDIATE_SOURCE_DIR)
-ALL_MODULES.$(LOCAL_MODULE).MAKEFILE := \
-    $(ALL_MODULES.$(LOCAL_MODULE).MAKEFILE) $(LOCAL_MODULE_MAKEFILE)
+ALL_MODULES.$(my_register_name).CLASS := \
+    $(ALL_MODULES.$(my_register_name).CLASS) $(LOCAL_MODULE_CLASS)
+ALL_MODULES.$(my_register_name).PATH := \
+    $(ALL_MODULES.$(my_register_name).PATH) $(LOCAL_PATH)
+ALL_MODULES.$(my_register_name).TAGS := \
+    $(ALL_MODULES.$(my_register_name).TAGS) $(my_module_tags)
+ALL_MODULES.$(my_register_name).CHECKED := \
+    $(ALL_MODULES.$(my_register_name).CHECKED) $(LOCAL_CHECKED_MODULE)
+ALL_MODULES.$(my_register_name).BUILT := \
+    $(ALL_MODULES.$(my_register_name).BUILT) $(LOCAL_BUILT_MODULE)
+ifneq (true,$(LOCAL_UNINSTALLABLE_MODULE))
+ALL_MODULES.$(my_register_name).INSTALLED := \
+    $(strip $(ALL_MODULES.$(my_register_name).INSTALLED) $(LOCAL_INSTALLED_MODULE))
+ALL_MODULES.$(my_register_name).BUILT_INSTALLED := \
+    $(strip $(ALL_MODULES.$(my_register_name).BUILT_INSTALLED) $(LOCAL_BUILT_MODULE):$(LOCAL_INSTALLED_MODULE))
+endif
+ifdef LOCAL_PICKUP_FILES
+# Files or directories ready to pick up by the build system
+# when $(LOCAL_BUILT_MODULE) is done.
+ALL_MODULES.$(my_register_name).PICKUP_FILES := \
+    $(ALL_MODULES.$(my_register_name).PICKUP_FILES) $(LOCAL_PICKUP_FILES)
+endif
+ALL_MODULES.$(my_register_name).REQUIRED := \
+    $(strip $(ALL_MODULES.$(my_register_name).REQUIRED) $(LOCAL_REQUIRED_MODULES) \
+      $(LOCAL_REQUIRED_MODULES_$(TARGET_$(LOCAL_2ND_ARCH_VAR_PREFIX)ARCH)))
+ALL_MODULES.$(my_register_name).EVENT_LOG_TAGS := \
+    $(ALL_MODULES.$(my_register_name).EVENT_LOG_TAGS) $(event_log_tags)
+ALL_MODULES.$(my_register_name).INTERMEDIATE_SOURCE_DIR := \
+    $(ALL_MODULES.$(my_register_name).INTERMEDIATE_SOURCE_DIR) $(LOCAL_INTERMEDIATE_SOURCE_DIR)
+ALL_MODULES.$(my_register_name).MAKEFILE := \
+    $(ALL_MODULES.$(my_register_name).MAKEFILE) $(LOCAL_MODULE_MAKEFILE)
 ifdef LOCAL_MODULE_OWNER
-ALL_MODULES.$(LOCAL_MODULE).OWNER := \
-    $(strip $(ALL_MODULES.$(LOCAL_MODULE).OWNER) $(LOCAL_MODULE_OWNER))
+ALL_MODULES.$(my_register_name).OWNER := \
+    $(sort $(ALL_MODULES.$(my_register_name).OWNER) $(LOCAL_MODULE_OWNER))
+endif
+ifdef LOCAL_2ND_ARCH_VAR_PREFIX
+ALL_MODULES.$(my_register_name).FOR_2ND_ARCH := true
+endif
+ifdef aidl_sources
+ALL_MODULES.$(my_register_name).AIDL_FILES := $(aidl_sources)
 endif
 
-INSTALLABLE_FILES.$(LOCAL_INSTALLED_MODULE).MODULE := $(LOCAL_MODULE)
+INSTALLABLE_FILES.$(LOCAL_INSTALLED_MODULE).MODULE := $(my_register_name)
 
 ###########################################################
-## Take care of LOCAL_MODULE_TAGS
+## Take care of my_module_tags
 ###########################################################
 
 # Keep track of all the tags we've seen.
-ALL_MODULE_TAGS := $(sort $(ALL_MODULE_TAGS) $(LOCAL_MODULE_TAGS))
+ALL_MODULE_TAGS := $(sort $(ALL_MODULE_TAGS) $(my_module_tags))
 
 # Add this module to the tag list of each specified tag.
 # Don't use "+=". If the variable hasn't been set with ":=",
 # it will default to recursive expansion.
-$(foreach tag,$(LOCAL_MODULE_TAGS),\
+$(foreach tag,$(my_module_tags),\
     $(eval ALL_MODULE_TAGS.$(tag) := \
-	    $(ALL_MODULE_TAGS.$(tag)) \
-	    $(LOCAL_INSTALLED_MODULE)))
+        $(ALL_MODULE_TAGS.$(tag)) \
+        $(LOCAL_INSTALLED_MODULE)))
 
 # Add this module name to the tag list of each specified tag.
-$(foreach tag,$(LOCAL_MODULE_TAGS),\
-    $(eval ALL_MODULE_NAME_TAGS.$(tag) += $(LOCAL_MODULE)))
+$(foreach tag,$(my_module_tags),\
+    $(eval ALL_MODULE_NAME_TAGS.$(tag) += $(my_register_name)))
+
+###########################################################
+## umbrella targets used to verify builds
+###########################################################
+j_or_n :=
+ifneq (,$(filter EXECUTABLES SHARED_LIBRARIES STATIC_LIBRARIES,$(LOCAL_MODULE_CLASS)))
+j_or_n := native
+else
+ifneq (,$(filter JAVA_LIBRARIES APPS,$(LOCAL_MODULE_CLASS)))
+j_or_n := java
+endif
+endif
+ifdef LOCAL_IS_HOST_MODULE
+h_or_t := host
+else
+h_or_t := target
+endif
+
+ifdef j_or_n
+$(j_or_n) $(h_or_t) $(j_or_n)-$(h_or_t) : $(LOCAL_CHECKED_MODULE)
+ifneq (,$(filter $(my_module_tags),tests))
+$(j_or_n)-$(h_or_t)-tests $(j_or_n)-tests $(h_or_t)-tests : $(LOCAL_CHECKED_MODULE)
+endif
+endif
 
 ###########################################################
 ## NOTICE files
 ###########################################################
 
-include $(BUILD_SYSTEM)/notice_files.mk
+include $(BUILD_NOTICE_FILE)
 
 #:vi noexpandtab

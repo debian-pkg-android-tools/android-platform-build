@@ -13,6 +13,9 @@
 # limitations under the License.
 #
 
+# Don't bother with the cleanspecs if you are running mm/mmm
+ifeq ($(ONE_SHOT_MAKEFILE)$(dont_bother),)
+
 INTERNAL_CLEAN_STEPS :=
 
 # Builds up a list of clean steps.  Creates a unique
@@ -78,10 +81,28 @@ else
     $(info Clean step: $(INTERNAL_CLEAN_STEP.$(step))) \
     $(shell $(INTERNAL_CLEAN_STEP.$(step))) \
    )
-  # If we are running mm/mmm, we should copy over the other clean steps too.
-  ifneq ($(ONE_SHOT_MAKEFILE),)
-    INTERNAL_CLEAN_STEPS := $(strip $(CURRENT_CLEAN_STEPS) $(steps))
+
+  # Rewrite the clean step for the second arch.
+  ifdef TARGET_2ND_ARCH
+  # $(1): the clean step cmd
+  # $(2): the prefix to search for
+  # $(3): the prefix to replace with
+  define -cs-rewrite-cleanstep
+  $(if $(filter $(2)/%,$(1)),\
+    $(eval _crs_new_cmd := $(patsubst $(2)/%,$(3)/%,$(1)))\
+    $(info Clean step: $(_crs_new_cmd))\
+    $(shell $(_crs_new_cmd)))
+  endef
+  $(foreach step,$(steps), \
+    $(call -cs-rewrite-cleanstep,$(INTERNAL_CLEAN_STEP.$(step)),$(TARGET_OUT_INTERMEDIATES),$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_INTERMEDIATES))\
+    $(call -cs-rewrite-cleanstep,$(INTERNAL_CLEAN_STEP.$(step)),$(TARGET_OUT_SHARED_LIBRARIES),$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_SHARED_LIBRARIES))\
+    $(call -cs-rewrite-cleanstep,$(INTERNAL_CLEAN_STEP.$(step)),$(TARGET_OUT_VENDOR_SHARED_LIBRARIES),$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_VENDOR_SHARED_LIBRARIES))\
+    $(call -cs-rewrite-cleanstep,$(INTERNAL_CLEAN_STEP.$(step)),$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_INTERMEDIATES),$(TARGET_OUT_INTERMEDIATES))\
+    $(call -cs-rewrite-cleanstep,$(INTERNAL_CLEAN_STEP.$(step)),$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_SHARED_LIBRARIES),$(TARGET_OUT_SHARED_LIBRARIES))\
+    $(call -cs-rewrite-cleanstep,$(INTERNAL_CLEAN_STEP.$(step)),$($(TARGET_2ND_ARCH_VAR_PREFIX)TARGET_OUT_VENDOR_SHARED_LIBRARIES),$(TARGET_OUT_VENDOR_SHARED_LIBRARIES))\
+    )
   endif
+  _crs_new_cmd :=
   steps :=
 endif
 CURRENT_CLEAN_BUILD_VERSION :=
@@ -101,6 +122,7 @@ clean_steps_file :=
 INTERNAL_CLEAN_STEPS :=
 INTERNAL_CLEAN_BUILD_VERSION :=
 
+endif  # if not ONE_SHOT_MAKEFILE dont_bother
 
 # Since products and build variants (unfortunately) share the same
 # PRODUCT_OUT staging directory, things can get out of sync if different
@@ -110,23 +132,11 @@ INTERNAL_CLEAN_BUILD_VERSION :=
 
 previous_build_config_file := $(PRODUCT_OUT)/previous_build_config.mk
 
-# TODO: this special case for the sdk is only necessary while "sdk"
-# is a valid make target.  Eventually, it will just be a product, at
-# which point TARGET_PRODUCT will handle it and we can avoid this check
-# of MAKECMDGOALS.  The "addprefix" is just to keep things pretty.
-ifneq ($(TARGET_PRODUCT),sdk)
-  building_sdk := $(addprefix -,$(filter sdk,$(MAKECMDGOALS)))
-else
-  # Don't bother with this extra part when explicitly building the sdk product.
-  building_sdk :=
-endif
-
 # A change in the list of aapt configs warrants an installclean, too.
 aapt_config_list := $(strip $(PRODUCT_AAPT_CONFIG) $(PRODUCT_AAPT_PREF_CONFIG))
 
 current_build_config := \
-    $(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT)$(building_sdk)-{$(aapt_config_list)}
-building_sdk :=
+    $(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT)-{$(aapt_config_list)}
 aapt_config_list :=
 force_installclean := false
 
@@ -179,19 +189,30 @@ installclean_files := \
 	$(HOST_OUT)/obj/NOTICE_FILES \
 	$(HOST_OUT)/sdk \
 	$(PRODUCT_OUT)/*.img \
+	$(PRODUCT_OUT)/*.ini \
 	$(PRODUCT_OUT)/*.txt \
 	$(PRODUCT_OUT)/*.xlb \
 	$(PRODUCT_OUT)/*.zip \
+	$(PRODUCT_OUT)/kernel \
 	$(PRODUCT_OUT)/data \
+	$(PRODUCT_OUT)/skin \
 	$(PRODUCT_OUT)/obj/APPS \
 	$(PRODUCT_OUT)/obj/NOTICE_FILES \
 	$(PRODUCT_OUT)/obj/PACKAGING \
 	$(PRODUCT_OUT)/recovery \
 	$(PRODUCT_OUT)/root \
 	$(PRODUCT_OUT)/system \
+	$(PRODUCT_OUT)/vendor \
+	$(PRODUCT_OUT)/oem \
 	$(PRODUCT_OUT)/dex_bootjars \
 	$(PRODUCT_OUT)/obj/JAVA_LIBRARIES \
-	$(PRODUCT_OUT)/obj/FAKE
+	$(PRODUCT_OUT)/obj/FAKE \
+	$(PRODUCT_OUT)/obj/EXECUTABLES/adbd_intermediates \
+	$(PRODUCT_OUT)/obj/STATIC_LIBRARIES/libfs_mgr_intermediates \
+	$(PRODUCT_OUT)/obj/EXECUTABLES/init_intermediates \
+	$(PRODUCT_OUT)/obj/ETC/mac_permissions.xml_intermediates \
+	$(PRODUCT_OUT)/obj/ETC/sepolicy_intermediates \
+	$(PRODUCT_OUT)/obj/ETC/init.environ.rc_intermediates
 
 # The files/dirs to delete during a dataclean, which removes any files
 # in the staging and emulator data partitions.
