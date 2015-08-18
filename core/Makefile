@@ -1,5 +1,9 @@
 # Put some miscellaneous rules here
 
+# HACK: clear LOCAL_PATH from including last build target before calling
+# intermedites-dir-for
+LOCAL_PATH := $(BUILD_SYSTEM)
+
 # Pick a reasonable string to use to identify files.
 ifneq "" "$(filter eng.%,$(BUILD_NUMBER))"
   # BUILD_NUMBER has a timestamp in it, which means that
@@ -9,18 +13,16 @@ else
   FILE_NAME_TAG := $(BUILD_NUMBER)
 endif
 
-is_tests_build := $(filter tests,$(MAKECMDGOALS))
-
 # -----------------------------------------------------------------
 # Define rules to copy PRODUCT_COPY_FILES defined by the product.
-# PRODUCT_COPY_FILES contains words like <source file>:<dest file>.
+# PRODUCT_COPY_FILES contains words like <source file>:<dest file>[:<owner>].
 # <dest file> is relative to $(PRODUCT_OUT), so it should look like,
 # e.g., "system/etc/file.xml".
 # The filter part means "only eval the copy-one-file rule if this
 # src:dest pair is the first one to match the same dest"
 #$(1): the src:dest pair
 define check-product-copy-files
-$(if $(filter %.apk, $(1)),$(error \
+$(if $(filter %.apk, $(call word-colon, 2, $(1))),$(error \
     Prebuilt apk found in PRODUCT_COPY_FILES: $(1), use BUILD_PREBUILT instead!))
 endef
 # filter out the duplicate <source file>:<dest file> pairs.
@@ -96,23 +98,47 @@ endif
 # Both of these tags will be removed and replaced with "release-keys"
 # when the target-files is signed in a post-build step.
 ifeq ($(DEFAULT_SYSTEM_DEV_CERTIFICATE),build/target/product/security/testkey)
-BUILD_VERSION_TAGS += test-keys
+BUILD_KEYS := test-keys
 else
-BUILD_VERSION_TAGS += dev-keys
+BUILD_KEYS := dev-keys
 endif
+BUILD_VERSION_TAGS += $(BUILD_KEYS)
 BUILD_VERSION_TAGS := $(subst $(space),$(comma),$(sort $(BUILD_VERSION_TAGS)))
 
 # A human-readable string that descibes this build in detail.
 build_desc := $(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT) $(PLATFORM_VERSION) $(BUILD_ID) $(BUILD_NUMBER) $(BUILD_VERSION_TAGS)
 $(INSTALLED_BUILD_PROP_TARGET): PRIVATE_BUILD_DESC := $(build_desc)
 
-# The string used to uniquely identify this build;  used by the OTA server.
+# The string used to uniquely identify the combined build and product; used by the OTA server.
 ifeq (,$(strip $(BUILD_FINGERPRINT)))
-  BUILD_FINGERPRINT := $(PRODUCT_BRAND)/$(TARGET_PRODUCT)/$(TARGET_DEVICE):$(PLATFORM_VERSION)/$(BUILD_ID)/$(BUILD_NUMBER):$(TARGET_BUILD_VARIANT)/$(BUILD_VERSION_TAGS)
+  ifneq ($(filter eng.%,$(BUILD_NUMBER)),)
+    # Trim down BUILD_FINGERPRINT: the default BUILD_NUMBER makes it easily exceed
+    # the Android system property length limit (PROPERTY_VALUE_MAX=92).
+    BF_BUILD_NUMBER := $(USER)$(shell date +%m%d%H%M)
+  else
+    BF_BUILD_NUMBER := $(BUILD_NUMBER)
+  endif
+  BUILD_FINGERPRINT := $(PRODUCT_BRAND)/$(TARGET_PRODUCT)/$(TARGET_DEVICE):$(PLATFORM_VERSION)/$(BUILD_ID)/$(BF_BUILD_NUMBER):$(TARGET_BUILD_VARIANT)/$(BUILD_VERSION_TAGS)
 endif
 ifneq ($(words $(BUILD_FINGERPRINT)),1)
   $(error BUILD_FINGERPRINT cannot contain spaces: "$(BUILD_FINGERPRINT)")
 endif
+
+# The string used to uniquely identify the system build; used by the OTA server.
+# This purposefully excludes any product-specific variables.
+ifeq (,$(strip $(BUILD_THUMBPRINT)))
+  BUILD_THUMBPRINT := $(PLATFORM_VERSION)/$(BUILD_ID)/$(BUILD_NUMBER):$(TARGET_BUILD_VARIANT)/$(BUILD_VERSION_TAGS)
+endif
+ifneq ($(words $(BUILD_THUMBPRINT)),1)
+  $(error BUILD_THUMBPRINT cannot contain spaces: "$(BUILD_THUMBPRINT)")
+endif
+
+KNOWN_OEM_THUMBPRINT_PROPERTIES := \
+    ro.product.brand \
+    ro.product.name \
+    ro.product.device
+OEM_THUMBPRINT_PROPERTIES := $(filter $(KNOWN_OEM_THUMBPRINT_PROPERTIES),\
+    $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_OEM_PROPERTIES))
 
 # Display parameters shown under Settings -> About Phone
 ifeq ($(TARGET_BUILD_VARIANT),user)
@@ -121,9 +147,9 @@ ifeq ($(TARGET_BUILD_VARIANT),user)
 
   # Dev. branches should have DISPLAY_BUILD_NUMBER set
   ifeq "true" "$(DISPLAY_BUILD_NUMBER)"
-    BUILD_DISPLAY_ID := $(BUILD_ID).$(BUILD_NUMBER)
+    BUILD_DISPLAY_ID := $(BUILD_ID).$(BUILD_NUMBER) $(BUILD_KEYS)
   else
-    BUILD_DISPLAY_ID := $(BUILD_ID)
+    BUILD_DISPLAY_ID := $(BUILD_ID) $(BUILD_KEYS)
   endif
 else
   # Non-user builds should show detailed build information
@@ -156,10 +182,25 @@ $(if $(product_property_overrides_locale_region),,$(word 2, $(call default-local
 endef
 
 BUILDINFO_SH := build/tools/buildinfo.sh
-$(INSTALLED_BUILD_PROP_TARGET): $(BUILDINFO_SH) $(INTERNAL_BUILD_ID_MAKEFILE) $(BUILD_SYSTEM)/version_defaults.mk $(wildcard $(TARGET_DEVICE_DIR)/system.prop)
+
+ifdef TARGET_SYSTEM_PROP
+system_prop_file := $(TARGET_SYSTEM_PROP)
+else
+system_prop_file := $(wildcard $(TARGET_DEVICE_DIR)/system.prop)
+endif
+$(INSTALLED_BUILD_PROP_TARGET): $(BUILDINFO_SH) $(INTERNAL_BUILD_ID_MAKEFILE) $(BUILD_SYSTEM)/version_defaults.mk $(system_prop_file)
 	@echo Target buildinfo: $@
 	@mkdir -p $(dir $@)
+	$(hide) echo > $@
+ifneq ($(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_OEM_PROPERTIES),)
+	$(hide) echo "#" >> $@; \
+	        echo "# PRODUCT_OEM_PROPERTIES" >> $@; \
+	        echo "#" >> $@;
+	$(hide) $(foreach prop,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_OEM_PROPERTIES), \
+		echo "import /oem/oem.prop $(prop)" >> $@;)
+endif
 	$(hide) TARGET_BUILD_TYPE="$(TARGET_BUILD_VARIANT)" \
+			TARGET_BUILD_FLAVOR="$(TARGET_PRODUCT)-$(TARGET_BUILD_VARIANT)" \
 			TARGET_DEVICE="$(TARGET_DEVICE)" \
 			PRODUCT_NAME="$(TARGET_PRODUCT)" \
 			PRODUCT_BRAND="$(PRODUCT_BRAND)" \
@@ -175,17 +216,27 @@ $(INSTALLED_BUILD_PROP_TARGET): $(BUILDINFO_SH) $(INTERNAL_BUILD_ID_MAKEFILE) $(
 			PLATFORM_VERSION="$(PLATFORM_VERSION)" \
 			PLATFORM_SDK_VERSION="$(PLATFORM_SDK_VERSION)" \
 			PLATFORM_VERSION_CODENAME="$(PLATFORM_VERSION_CODENAME)" \
+			PLATFORM_VERSION_ALL_CODENAMES="$(PLATFORM_VERSION_ALL_CODENAMES)" \
 			BUILD_VERSION_TAGS="$(BUILD_VERSION_TAGS)" \
 			TARGET_BOOTLOADER_BOARD_NAME="$(TARGET_BOOTLOADER_BOARD_NAME)" \
 			BUILD_FINGERPRINT="$(BUILD_FINGERPRINT)" \
+			$(if $(OEM_THUMBPRINT_PROPERTIES),BUILD_THUMBPRINT="$(BUILD_THUMBPRINT)") \
 			TARGET_BOARD_PLATFORM="$(TARGET_BOARD_PLATFORM)" \
+			TARGET_CPU_ABI_LIST="$(TARGET_CPU_ABI_LIST)" \
+			TARGET_CPU_ABI_LIST_32_BIT="$(TARGET_CPU_ABI_LIST_32_BIT)" \
+			TARGET_CPU_ABI_LIST_64_BIT="$(TARGET_CPU_ABI_LIST_64_BIT)" \
 			TARGET_CPU_ABI="$(TARGET_CPU_ABI)" \
 			TARGET_CPU_ABI2="$(TARGET_CPU_ABI2)" \
 			TARGET_AAPT_CHARACTERISTICS="$(TARGET_AAPT_CHARACTERISTICS)" \
-	        bash $(BUILDINFO_SH) > $@
-	$(hide) if [ -f $(TARGET_DEVICE_DIR)/system.prop ]; then \
-	          cat $(TARGET_DEVICE_DIR)/system.prop >> $@; \
-	        fi
+	        bash $(BUILDINFO_SH) >> $@
+	$(hide) $(foreach file,$(system_prop_file), \
+		if [ -f "$(file)" ]; then \
+			echo "#" >> $@; \
+			echo Target buildinfo from: "$(file)"; \
+			echo "# from $(file)" >> $@; \
+			echo "#" >> $@; \
+			cat $(file) >> $@; \
+		fi;)
 	$(if $(ADDITIONAL_BUILD_PROPERTIES), \
 		$(hide) echo >> $@; \
 		        echo "#" >> $@; \
@@ -193,9 +244,25 @@ $(INSTALLED_BUILD_PROP_TARGET): $(BUILDINFO_SH) $(INTERNAL_BUILD_ID_MAKEFILE) $(
 		        echo "#" >> $@; )
 	$(hide) $(foreach line,$(ADDITIONAL_BUILD_PROPERTIES), \
 		echo "$(line)" >> $@;)
-	$(hide) build/tools/post_process_props.py $@
+	$(hide) build/tools/post_process_props.py $@ $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SYSTEM_PROPERTY_BLACKLIST)
 
 build_desc :=
+
+# -----------------------------------------------------------------
+# vendor build.prop
+#
+# For verifying that the vendor build is what we thing it is
+ifdef BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE
+INSTALLED_VENDOR_BUILD_PROP_TARGET := $(TARGET_OUT_VENDOR)/build.prop
+ALL_DEFAULT_INSTALLED_MODULES += $(INSTALLED_VENDOR_BUILD_PROP_TARGET)
+$(INSTALLED_VENDOR_BUILD_PROP_TARGET): $(INSTALLED_BUILD_PROP_TARGET)
+	@echo Target vendor buildinfo: $@
+	@mkdir -p $(dir $@)
+	$(hide) echo > $@
+	$(hide) echo ro.vendor.build.date=`date`>>$@
+	$(hide) echo ro.vendor.build.date.utc=`date +%s`>>$@
+	$(hide) echo ro.vendor.build.fingerprint="$(BUILD_FINGERPRINT)">>$@
+endif
 
 # -----------------------------------------------------------------
 # sdk-build.prop
@@ -240,6 +307,12 @@ package-stats: $(PACKAGE_STATS_FILE)
 
 # -----------------------------------------------------------------
 # Cert-to-package mapping.  Used by the post-build signing tools.
+# Use a macro to add newline to each echo command
+define _apkcerts_echo_with_newline
+$(hide) echo $(1)
+
+endef
+
 name := $(TARGET_PRODUCT)
 ifeq ($(TARGET_BUILD_TYPE),debug)
   name := $(name)_debug
@@ -254,13 +327,15 @@ $(APKCERTS_FILE):
 	@echo APK certs list: $@
 	@mkdir -p $(dir $@)
 	@rm -f $@
-	$(hide) $(foreach p,$(PACKAGES),\
-          $(if $(PACKAGES.$(p).EXTERNAL_KEY),\
-	    echo 'name="$(p).apk" certificate="EXTERNAL" \
-	         private_key=""' >> $@;,\
-	    echo 'name="$(p).apk" certificate="$(PACKAGES.$(p).CERTIFICATE)" \
-	         private_key="$(PACKAGES.$(p).PRIVATE_KEY)"' >> $@;))
-	# In case $(PACKAGES) is empty.
+	$(foreach p,$(PACKAGES),\
+	  $(if $(PACKAGES.$(p).EXTERNAL_KEY),\
+	    $(call _apkcerts_echo_with_newline,\
+	      'name="$(p).apk" certificate="EXTERNAL" \
+	      private_key=""' >> $@),\
+	    $(call _apkcerts_echo_with_newline,\
+	      'name="$(p).apk" certificate="$(PACKAGES.$(p).CERTIFICATE)" \
+	      private_key="$(PACKAGES.$(p).PRIVATE_KEY)"' >> $@)))
+	# In case value of PACKAGES is empty.
 	$(hide) touch $@
 
 .PHONY: apkcerts-list
@@ -347,6 +422,22 @@ ALL_DEFAULT_INSTALLED_MODULES += $(event_log_tags_file)
 # #################################################################
 # Targets for boot/OS images
 # #################################################################
+ifneq ($(strip $(TARGET_NO_BOOTLOADER)),true)
+  INSTALLED_BOOTLOADER_MODULE := $(PRODUCT_OUT)/bootloader
+  ifeq ($(strip $(TARGET_BOOTLOADER_IS_2ND)),true)
+    INSTALLED_2NDBOOTLOADER_TARGET := $(PRODUCT_OUT)/2ndbootloader
+  else
+    INSTALLED_2NDBOOTLOADER_TARGET :=
+  endif
+else
+  INSTALLED_BOOTLOADER_MODULE :=
+  INSTALLED_2NDBOOTLOADER_TARGET :=
+endif # TARGET_NO_BOOTLOADER
+ifneq ($(strip $(TARGET_NO_KERNEL)),true)
+  INSTALLED_KERNEL_TARGET := $(PRODUCT_OUT)/kernel
+else
+  INSTALLED_KERNEL_TARGET :=
+endif
 
 # -----------------------------------------------------------------
 # the ramdisk
@@ -364,6 +455,10 @@ $(INSTALLED_RAMDISK_TARGET): $(MKBOOTFS) $(INTERNAL_RAMDISK_FILES) | $(MINIGZIP)
 	$(call pretty,"Target ram disk: $@")
 	$(hide) $(MKBOOTFS) $(TARGET_ROOT_OUT) | $(MINIGZIP) > $@
 
+.PHONY: ramdisk-nodeps
+ramdisk-nodeps: $(MKBOOTFS) | $(MINIGZIP)
+	@echo "make $@: ignoring dependencies"
+	$(hide) $(MKBOOTFS) $(TARGET_ROOT_OUT) | $(MINIGZIP) > $(INSTALLED_RAMDISK_TARGET)
 
 ifneq ($(strip $(TARGET_NO_KERNEL)),true)
 
@@ -397,17 +492,49 @@ ifeq ($(TARGET_BOOTIMAGE_USE_EXT2),true)
 tmp_dir_for_image := $(call intermediates-dir-for,EXECUTABLES,boot_img)/bootimg
 INTERNAL_BOOTIMAGE_ARGS += --tmpdir $(tmp_dir_for_image)
 INTERNAL_BOOTIMAGE_ARGS += --genext2fs $(MKEXT2IMG)
+
+ifeq ($(TARGET_BOOTIMAGE_USE_EXTLINUX),true)
+INTERNAL_BOOTIMAGE_ARGS += --extlinuxconf $(TARGET_BOOTIMAGE_EXTLINUX_CONFIG)
+endif
+
 $(INSTALLED_BOOTIMAGE_TARGET): $(MKEXT2IMG) $(INTERNAL_BOOTIMAGE_FILES)
 	$(call pretty,"Target boot image: $@")
 	$(hide) $(MKEXT2BOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) --output $@
 
-else ifndef BOARD_CUSTOM_BOOTIMG_MK # TARGET_BOOTIMAGE_USE_EXT2 != true
+.PHONY: bootimage-nodeps
+bootimage-nodeps: $(MKEXT2IMG)
+	@echo "make $@: ignoring dependencies"
+	$(hide) $(MKEXT2BOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) --output $(INSTALLED_BOOTIMAGE_TARGET)
+
+else ifeq (true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VERITY)) # TARGET_BOOTIMAGE_USE_EXT2 != true
+
+$(INSTALLED_BOOTIMAGE_TARGET): $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_FILES) $(BOOT_SIGNER)
+	$(call pretty,"Target boot image: $@")
+	$(hide) $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $@
+	$(BOOT_SIGNER) /boot $@ $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).pk8 $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).x509.pem $@
+	$(hide) $(call assert-max-image-size,$@,$(BOARD_BOOTIMAGE_PARTITION_SIZE))
+
+.PHONY: bootimage-nodeps
+bootimage-nodeps: $(MKBOOTIMG) $(BOOT_SIGNER)
+	@echo "make $@: ignoring dependencies"
+	$(hide) $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $(INSTALLED_BOOTIMAGE_TARGET)
+	$(BOOT_SIGNER) /boot $(INSTALLED_BOOTIMAGE_TARGET) $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).pk8 $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).x509.pem $(INSTALLED_BOOTIMAGE_TARGET)
+	$(hide) $(call assert-max-image-size,$(INSTALLED_BOOTIMAGE_TARGET),$(BOARD_BOOTIMAGE_PARTITION_SIZE))
+
+else # PRODUCT_SUPPORTS_VERITY != true
 
 $(INSTALLED_BOOTIMAGE_TARGET): $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_FILES)
 	$(call pretty,"Target boot image: $@")
-	$(hide) $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) --output $@
-	$(hide) $(call assert-max-image-size,$@,$(BOARD_BOOTIMAGE_PARTITION_SIZE),raw)
-endif # ifndef BOARD_CUSTOM_BOOTIMG_MK
+	$(hide) $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $@
+	$(hide) $(call assert-max-image-size,$@,$(BOARD_BOOTIMAGE_PARTITION_SIZE))
+
+.PHONY: bootimage-nodeps
+bootimage-nodeps: $(MKBOOTIMG)
+	@echo "make $@: ignoring dependencies"
+	$(hide) $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $(INSTALLED_BOOTIMAGE_TARGET)
+	$(hide) $(call assert-max-image-size,$(INSTALLED_BOOTIMAGE_TARGET),$(BOARD_BOOTIMAGE_PARTITION_SIZE))
+
+endif # TARGET_BOOTIMAGE_USE_EXT2
 
 else	# TARGET_NO_KERNEL
 # HACK: The top-level targets depend on the bootimage.  Not all targets
@@ -470,6 +597,7 @@ target_notice_file_html_gz := $(TARGET_OUT_INTERMEDIATES)/NOTICE.html.gz
 tools_notice_file_txt := $(HOST_OUT_INTERMEDIATES)/NOTICE.txt
 tools_notice_file_html := $(HOST_OUT_INTERMEDIATES)/NOTICE.html
 
+ifndef TARGET_BUILD_APPS
 kernel_notice_file := $(TARGET_OUT_NOTICE_FILES)/src/kernel.txt
 pdk_fusion_notice_files := $(filter $(TARGET_OUT_NOTICE_FILES)/%, $(ALL_PDK_FUSION_FILES))
 
@@ -502,6 +630,7 @@ $(installed_notice_html_gz): $(target_notice_file_html_gz) | $(ACP)
 ifeq ($(ONE_SHOT_MAKEFILE),)
 ALL_DEFAULT_INSTALLED_MODULES += $(installed_notice_html_gz)
 endif
+endif  # TARGET_BUILD_APPS
 
 # The kernel isn't really a module, so to get its module file in there, we
 # make the target NOTICE files depend on this particular file too, which will
@@ -551,47 +680,115 @@ endif
 endif
 endif
 
+# These options tell the recovery updater/installer how to mount the partitions writebale.
+# <fstype>=<fstype_opts>[|<fstype_opts>]...
+# fstype_opts := <opt>[,<opt>]...
+#         opt := <name>[=<value>]
+# The following worked on Nexus devices with Kernel 3.1, 3.4, 3.10
+DEFAULT_TARGET_RECOVERY_FSTYPE_MOUNT_OPTIONS := ext4=max_batch_time=0,commit=1,data=ordered,barrier=1,errors=panic,nodelalloc
+
 ifneq (true,$(TARGET_USERIMAGES_SPARSE_EXT_DISABLED))
   INTERNAL_USERIMAGES_SPARSE_EXT_FLAG := -s
 endif
 
 ifeq ($(INTERNAL_USERIMAGES_USE_EXT),true)
-INTERNAL_USERIMAGES_DEPS := $(MKEXTUSERIMG) $(MAKE_EXT4FS)
+INTERNAL_USERIMAGES_DEPS := $(SIMG2IMG)
+INTERNAL_USERIMAGES_DEPS += $(MKEXTUSERIMG) $(MAKE_EXT4FS) $(E2FSCK)
+ifeq ($(TARGET_USERIMAGES_USE_F2FS),true)
+INTERNAL_USERIMAGES_DEPS += $(MKF2FSUSERIMG) $(MAKE_F2FS)
+endif
 else
 INTERNAL_USERIMAGES_DEPS := $(MKYAFFS2)
 endif
+
 INTERNAL_USERIMAGES_BINARY_PATHS := $(sort $(dir $(INTERNAL_USERIMAGES_DEPS)))
 
+ifeq (true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VERITY))
+INTERNAL_USERIMAGES_DEPS += $(BUILD_VERITY_TREE) $(APPEND2SIMG) $(VERITY_SIGNER)
+endif
+
+SELINUX_FC := $(TARGET_ROOT_OUT)/file_contexts
+INTERNAL_USERIMAGES_DEPS += $(SELINUX_FC)
+
 # $(1): the path of the output dictionary file
+# $(2): additional "key=value" pairs to append to the dictionary file.
 define generate-userimage-prop-dictionary
 $(if $(INTERNAL_USERIMAGES_EXT_VARIANT),$(hide) echo "fs_type=$(INTERNAL_USERIMAGES_EXT_VARIANT)" >> $(1))
 $(if $(BOARD_SYSTEMIMAGE_PARTITION_SIZE),$(hide) echo "system_size=$(BOARD_SYSTEMIMAGE_PARTITION_SIZE)" >> $(1))
+$(if $(BOARD_SYSTEMIMAGE_JOURNAL_SIZE),$(hide) echo "system_journal_size=$(BOARD_SYSTEMIMAGE_JOURNAL_SIZE)" >> $(1))
+$(if $(BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE),$(hide) echo "userdata_fs_type=$(BOARD_USERDATAIMAGE_FILE_SYSTEM_TYPE)" >> $(1))
 $(if $(BOARD_USERDATAIMAGE_PARTITION_SIZE),$(hide) echo "userdata_size=$(BOARD_USERDATAIMAGE_PARTITION_SIZE)" >> $(1))
 $(if $(BOARD_CACHEIMAGE_FILE_SYSTEM_TYPE),$(hide) echo "cache_fs_type=$(BOARD_CACHEIMAGE_FILE_SYSTEM_TYPE)" >> $(1))
 $(if $(BOARD_CACHEIMAGE_PARTITION_SIZE),$(hide) echo "cache_size=$(BOARD_CACHEIMAGE_PARTITION_SIZE)" >> $(1))
+$(if $(BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE),$(hide) echo "vendor_fs_type=$(BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE)" >> $(1))
+$(if $(BOARD_VENDORIMAGE_PARTITION_SIZE),$(hide) echo "vendor_size=$(BOARD_VENDORIMAGE_PARTITION_SIZE)" >> $(1))
+$(if $(BOARD_VENDORIMAGE_JOURNAL_SIZE),$(hide) echo "vendor_journal_size=$(BOARD_VENDORIMAGE_JOURNAL_SIZE)" >> $(1))
+$(if $(BOARD_OEMIMAGE_PARTITION_SIZE),$(hide) echo "oem_size=$(BOARD_OEMIMAGE_PARTITION_SIZE)" >> $(1))
+$(if $(BOARD_OEMIMAGE_JOURNAL_SIZE),$(hide) echo "oem_journal_size=$(BOARD_OEMIMAGE_JOURNAL_SIZE)" >> $(1))
 $(if $(INTERNAL_USERIMAGES_SPARSE_EXT_FLAG),$(hide) echo "extfs_sparse_flag=$(INTERNAL_USERIMAGES_SPARSE_EXT_FLAG)" >> $(1))
 $(if $(mkyaffs2_extra_flags),$(hide) echo "mkyaffs2_extra_flags=$(mkyaffs2_extra_flags)" >> $(1))
-$(hide) echo "selinux_fc=$(TARGET_ROOT_OUT)/file_contexts" >> $(1)
+$(hide) echo "selinux_fc=$(SELINUX_FC)" >> $(1)
+$(if $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VERITY),$(hide) echo "verity=$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VERITY)" >> $(1))
+$(if $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VERITY),$(hide) echo "verity_key=$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY)" >> $(1))
+$(if $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VERITY),$(hide) echo "verity_signer_cmd=$(VERITY_SIGNER)" >> $(1))
+$(if $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SYSTEM_VERITY_PARTITION),$(hide) echo "system_verity_block_device=$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SYSTEM_VERITY_PARTITION)" >> $(1))
+$(if $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VENDOR_VERITY_PARTITION),$(hide) echo "vendor_verity_block_device=$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VENDOR_VERITY_PARTITION)" >> $(1))
+$(if $(2),$(hide) $(foreach kv,$(2),echo "$(kv)" >> $(1);))
 endef
 
 # -----------------------------------------------------------------
 # Recovery image
 
 # If neither TARGET_NO_KERNEL nor TARGET_NO_RECOVERY are true
-ifeq (,$(filter true, $(TARGET_NO_KERNEL) $(TARGET_NO_RECOVERY) $(BUILD_TINY_ANDROID)))
+ifeq (,$(filter true, $(TARGET_NO_KERNEL) $(TARGET_NO_RECOVERY)))
 
 INSTALLED_RECOVERYIMAGE_TARGET := $(PRODUCT_OUT)/recovery.img
 
 recovery_initrc := $(call include-path-for, recovery)/etc/init.rc
+recovery_sepolicy := $(call intermediates-dir-for,ETC,sepolicy.recovery)/sepolicy.recovery
 recovery_kernel := $(INSTALLED_KERNEL_TARGET) # same as a non-recovery system
 recovery_ramdisk := $(PRODUCT_OUT)/ramdisk-recovery.img
 recovery_build_prop := $(INSTALLED_BUILD_PROP_TARGET)
 recovery_binary := $(call intermediates-dir-for,EXECUTABLES,recovery)/recovery
 recovery_resources_common := $(call include-path-for, recovery)/res
+
+# Set recovery_density to the density bucket of the device.
+recovery_density := unknown
+ifneq (,$(PRODUCT_AAPT_PREF_CONFIG))
+# If PRODUCT_AAPT_PREF_CONFIG includes a dpi bucket, then use that value.
+recovery_density := $(filter %dpi,$(PRODUCT_AAPT_PREF_CONFIG))
+else
+# Otherwise, use the default medium density.
+recovery_densities := mdpi
+endif
+
+ifneq (,$(wildcard $(recovery_resources_common)-$(recovery_density)))
+recovery_resources_common := $(recovery_resources_common)-$(recovery_density)
+else
+recovery_resources_common := $(recovery_resources_common)-xhdpi
+endif
+
+# Select the 18x32 font on high-density devices (xhdpi and up); and
+# the 12x22 font on other devices.  Note that the font selected here
+# can be overridden for a particular device by putting a font.png in
+# its private recovery resources.
+
+ifneq (,$(filter xxxhdpi xxhdpi xhdpi,$(recovery_density)))
+recovery_font := $(call include-path-for, recovery)/fonts/18x32.png
+else
+recovery_font := $(call include-path-for, recovery)/fonts/12x22.png
+endif
+
 recovery_resources_private := $(strip $(wildcard $(TARGET_DEVICE_DIR)/recovery/res))
 recovery_resource_deps := $(shell find $(recovery_resources_common) \
   $(recovery_resources_private) -type f)
+ifdef TARGET_RECOVERY_FSTAB
+recovery_fstab := $(TARGET_RECOVERY_FSTAB)
+else
 recovery_fstab := $(strip $(wildcard $(TARGET_DEVICE_DIR)/recovery.fstab))
+endif
+# Named '.dat' so we don't attempt to use imgdiff for patching it.
+RECOVERY_RESOURCE_ZIP := $(TARGET_OUT)/etc/recovery-resource.dat
 
 ifeq ($(recovery_resources_private),)
   $(info No private recovery resources for TARGET_DEVICE $(TARGET_DEVICE))
@@ -636,50 +833,58 @@ $(RECOVERY_INSTALL_OTA_KEYS): $(OTA_PUBLIC_KEYS) $(DUMPKEY_JAR) $(extra_keys)
 	@mkdir -p $(dir $@)
 	java -jar $(DUMPKEY_JAR) $(PRIVATE_OTA_PUBLIC_KEYS) $(extra_keys) > $@
 
-$(recovery_ramdisk): $(MKBOOTIMG) $(MINIGZIP) \
+$(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTFS) $(MKBOOTIMG) $(MINIGZIP) \
 		$(INSTALLED_RAMDISK_TARGET) \
 		$(INSTALLED_BOOTIMAGE_TARGET) \
 		$(recovery_binary) \
-		$(recovery_initrc) \
+		$(recovery_initrc) $(recovery_sepolicy) $(recovery_kernel) \
 		$(INSTALLED_2NDBOOTLOADER_TARGET) \
 		$(recovery_build_prop) $(recovery_resource_deps) \
 		$(recovery_fstab) \
 		$(RECOVERY_INSTALL_OTA_KEYS)
 	@echo ----- Making recovery image ------
-	rm -rf $(TARGET_RECOVERY_OUT)
-	mkdir -p $(TARGET_RECOVERY_OUT)
-	mkdir -p $(TARGET_RECOVERY_ROOT_OUT)
-	mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/etc
-	mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/tmp
-	echo Copying baseline ramdisk...
-	cp -R $(TARGET_ROOT_OUT) $(TARGET_RECOVERY_OUT)
-	rm $(TARGET_RECOVERY_ROOT_OUT)/init*.rc
-	echo Modifying ramdisk contents...
-	cp -f $(recovery_initrc) $(TARGET_RECOVERY_ROOT_OUT)/
-	cp -f $(recovery_binary) $(TARGET_RECOVERY_ROOT_OUT)/sbin/
-	cp -rf $(recovery_resources_common) $(TARGET_RECOVERY_ROOT_OUT)/
-	$(foreach item,$(recovery_resources_private), \
+	$(hide) rm -rf $(TARGET_RECOVERY_OUT)
+	$(hide) mkdir -p $(TARGET_RECOVERY_OUT)
+	$(hide) mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/etc $(TARGET_RECOVERY_ROOT_OUT)/tmp
+	@echo Copying baseline ramdisk...
+	$(hide) cp -R $(TARGET_ROOT_OUT) $(TARGET_RECOVERY_OUT)
+	@echo Modifying ramdisk contents...
+	$(hide) rm -f $(TARGET_RECOVERY_ROOT_OUT)/init*.rc
+	$(hide) cp -f $(recovery_initrc) $(TARGET_RECOVERY_ROOT_OUT)/
+	$(hide) rm -f $(TARGET_RECOVERY_ROOT_OUT)/sepolicy
+	$(hide) cp -f $(recovery_sepolicy) $(TARGET_RECOVERY_ROOT_OUT)/sepolicy
+	$(hide) -cp $(TARGET_ROOT_OUT)/init.recovery.*.rc $(TARGET_RECOVERY_ROOT_OUT)/
+	$(hide) cp -f $(recovery_binary) $(TARGET_RECOVERY_ROOT_OUT)/sbin/
+	$(hide) mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/res
+	$(hide) rm -rf $(TARGET_RECOVERY_ROOT_OUT)/res/*
+	$(hide) cp -rf $(recovery_resources_common)/* $(TARGET_RECOVERY_ROOT_OUT)/res
+	$(hide) cp -f $(recovery_font) $(TARGET_RECOVERY_ROOT_OUT)/res/images/font.png
+	$(hide) $(foreach item,$(recovery_resources_private), \
 	  cp -rf $(item) $(TARGET_RECOVERY_ROOT_OUT)/)
-	$(foreach item,$(recovery_fstab), \
+	$(hide) $(foreach item,$(recovery_fstab), \
 	  cp -f $(item) $(TARGET_RECOVERY_ROOT_OUT)/etc/recovery.fstab)
-	cp $(RECOVERY_INSTALL_OTA_KEYS) $(TARGET_RECOVERY_ROOT_OUT)/res/keys
-	cat $(INSTALLED_DEFAULT_PROP_TARGET) $(recovery_build_prop) \
+	$(hide) cp $(RECOVERY_INSTALL_OTA_KEYS) $(TARGET_RECOVERY_ROOT_OUT)/res/keys
+	$(hide) cat $(INSTALLED_DEFAULT_PROP_TARGET) $(recovery_build_prop) \
 	        > $(TARGET_RECOVERY_ROOT_OUT)/default.prop
-	$(MKBOOTFS) $(TARGET_RECOVERY_ROOT_OUT) | $(MINIGZIP) > $@
-
-ifndef BOARD_CUSTOM_BOOTIMG_MK
-$(INSTALLED_RECOVERYIMAGE_TARGET): $(MKBOOTIMG) $(recovery_ramdisk) $(recovery_kernel)
-	$(call pretty,"Target recovery image: $@")
-	$(hide) $(MKBOOTIMG) $(INTERNAL_RECOVERYIMAGE_ARGS) --output $@
-	$(hide) $(call assert-max-image-size,$@,$(BOARD_RECOVERYIMAGE_PARTITION_SIZE),raw)
+	$(hide) $(MKBOOTFS) $(TARGET_RECOVERY_ROOT_OUT) | $(MINIGZIP) > $(recovery_ramdisk)
+	$(hide) $(MKBOOTIMG) $(INTERNAL_RECOVERYIMAGE_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $@
+ifeq (true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VERITY))
+	$(BOOT_SIGNER) /recovery $@ $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).pk8 $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).x509.pem $@
 endif
+	$(hide) $(call assert-max-image-size,$@,$(BOARD_RECOVERYIMAGE_PARTITION_SIZE))
+	@echo ----- Made recovery image: $@ --------
+
+$(RECOVERY_RESOURCE_ZIP): $(INSTALLED_RECOVERYIMAGE_TARGET)
+	$(hide) mkdir -p $(dir $@)
+	$(hide) find $(TARGET_RECOVERY_ROOT_OUT)/res -type f | sort | zip -0qrj $@ -@
 
 else
 INSTALLED_RECOVERYIMAGE_TARGET :=
+RECOVERY_RESOURCE_ZIP :=
 endif
 
 .PHONY: recoveryimage
-recoveryimage: $(INSTALLED_RECOVERYIMAGE_TARGET)
+recoveryimage: $(INSTALLED_RECOVERYIMAGE_TARGET) $(RECOVERY_RESOURCE_ZIP)
 
 ifneq ($(BOARD_NAND_PAGE_SIZE),)
 mkyaffs2_extra_flags := -c $(BOARD_NAND_PAGE_SIZE)
@@ -694,28 +899,21 @@ else
 BOARD_NAND_SPARE_SIZE := 64
 endif
 
-ifdef BOARD_CUSTOM_BOOTIMG_MK
-include $(BOARD_CUSTOM_BOOTIMG_MK)
-endif
-
 # -----------------------------------------------------------------
 # system image
 #
+# Remove overridden packages from $(ALL_PDK_FUSION_FILES)
+PDK_FUSION_SYSIMG_FILES := \
+    $(filter-out $(foreach p,$(overridden_packages),$(p) %/$(p).apk), \
+        $(ALL_PDK_FUSION_FILES))
 
 INTERNAL_SYSTEMIMAGE_FILES := $(filter $(TARGET_OUT)/%, \
     $(ALL_PREBUILT) \
     $(ALL_COPIED_HEADERS) \
     $(ALL_GENERATED_SOURCES) \
-    $(ALL_DEFAULT_INSTALLED_MODULES)\
-    $(ALL_PDK_FUSION_FILES))
-
-ifdef is_tests_build
-# We don't want to install tests modules to the system partition
-# when building "tests", because now "tests" may be built in a user, userdebug
-# or eng build variant and we don't want to pollute the system partition.
-# INTERNAL_SYSTEMIMAGE_FILES += $(filter $(TARGET_OUT)/%, \
-#    $(tests_MODULES))
-endif
+    $(ALL_DEFAULT_INSTALLED_MODULES) \
+    $(PDK_FUSION_SYSIMG_FILES) \
+    $(RECOVERY_RESOURCE_ZIP))
 
 FULL_SYSTEMIMAGE_DEPS := $(INTERNAL_SYSTEMIMAGE_FILES) $(INTERNAL_USERIMAGES_DEPS)
 # -----------------------------------------------------------------
@@ -733,25 +931,43 @@ $(INSTALLED_FILES_FILE): $(FULL_SYSTEMIMAGE_DEPS)
 
 .PHONY: installed-file-list
 installed-file-list: $(INSTALLED_FILES_FILE)
-ifneq ($(filter sdk win_sdk,$(MAKECMDGOALS)),)
-$(call dist-for-goals, sdk win_sdk, $(INSTALLED_FILES_FILE))
-endif
-ifneq ($(filter sdk_addon,$(MAKECMDGOALS)),)
-$(call dist-for-goals, sdk_addon, $(INSTALLED_FILES_FILE))
-endif
+
+$(call dist-for-goals, sdk win_sdk sdk_addon, $(INSTALLED_FILES_FILE))
 
 systemimage_intermediates := \
     $(call intermediates-dir-for,PACKAGING,systemimage)
 BUILT_SYSTEMIMAGE := $(systemimage_intermediates)/system.img
 
+# Create symlink /system/vendor to /vendor if necessary.
+ifdef BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE
+define create-system-vendor-symlink
+$(hide) if [ -d $(TARGET_OUT)/vendor ] && [ ! -h $(TARGET_OUT)/vendor ]; then \
+  echo 'Non-symlink $(TARGET_OUT)/vendor detected!' 1>&2; \
+  echo 'You cannot install files to $(TARGET_OUT)/vendor while building a separate vendor.img!' 1>&2; \
+  exit 1; \
+fi
+$(hide) ln -sf /vendor $(TARGET_OUT)/vendor
+endef
+else
+define create-system-vendor-symlink
+endef
+endif
+
 # $(1): output file
 define build-systemimage-target
   @echo "Target system fs image: $(1)"
+  $(call create-system-vendor-symlink)
   @mkdir -p $(dir $(1)) $(systemimage_intermediates) && rm -rf $(systemimage_intermediates)/system_image_info.txt
-  $(call generate-userimage-prop-dictionary, $(systemimage_intermediates)/system_image_info.txt)
+  $(call generate-userimage-prop-dictionary, $(systemimage_intermediates)/system_image_info.txt, \
+      skip_fsck=true)
   $(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH \
       ./build/tools/releasetools/build_image.py \
-      $(TARGET_OUT) $(systemimage_intermediates)/system_image_info.txt $(1)
+      $(TARGET_OUT) $(systemimage_intermediates)/system_image_info.txt $(1) \
+      || ( echo "Out of space? the tree size of $(TARGET_OUT) is (MB): " 1>&2 ;\
+           du -sm $(TARGET_OUT) 1>&2;\
+           echo "The max is $$(( $(BOARD_SYSTEMIMAGE_PARTITION_SIZE) / 1048576 )) MB." 1>&2 ;\
+           mkdir -p $(DIST_DIR); cp $(INSTALLED_FILES_FILE) $(DIST_DIR)/installed-files-rescued.txt; \
+           exit 1 )
 endef
 
 $(BUILT_SYSTEMIMAGE): $(FULL_SYSTEMIMAGE_DEPS) $(INSTALLED_FILES_FILE)
@@ -767,11 +983,7 @@ SYSTEMIMAGE_SOURCE_DIR := $(TARGET_OUT)
 # image size check calculation.
 ifneq ($(INSTALLED_RECOVERYIMAGE_TARGET),)
 intermediates := $(call intermediates-dir-for,PACKAGING,recovery_patch)
-ifndef BOARD_CUSTOM_BOOTIMG_MK
 RECOVERY_FROM_BOOT_PATCH := $(intermediates)/recovery_from_boot.p
-else
-RECOVERY_FROM_BOOT_PATCH :=
-endif
 $(RECOVERY_FROM_BOOT_PATCH): $(INSTALLED_RECOVERYIMAGE_TARGET) \
                              $(INSTALLED_BOOTIMAGE_TARGET) \
 			     $(HOST_OUT_EXECUTABLES)/imgdiff \
@@ -785,7 +997,7 @@ endif
 $(INSTALLED_SYSTEMIMAGE): $(BUILT_SYSTEMIMAGE) $(RECOVERY_FROM_BOOT_PATCH) | $(ACP)
 	@echo "Install system fs image: $@"
 	$(copy-file-to-target)
-	$(hide) $(call assert-max-image-size,$@ $(RECOVERY_FROM_BOOT_PATCH),$(BOARD_SYSTEMIMAGE_PARTITION_SIZE),yaffs)
+	$(hide) $(call assert-max-image-size,$@ $(RECOVERY_FROM_BOOT_PATCH),$(BOARD_SYSTEMIMAGE_PARTITION_SIZE))
 
 systemimage: $(INSTALLED_SYSTEMIMAGE)
 
@@ -794,7 +1006,7 @@ systemimage-nodeps snod: $(filter-out systemimage-nodeps snod,$(MAKECMDGOALS)) \
 	            | $(INTERNAL_USERIMAGES_DEPS)
 	@echo "make $@: ignoring dependencies"
 	$(call build-systemimage-target,$(INSTALLED_SYSTEMIMAGE))
-	$(hide) $(call assert-max-image-size,$(INSTALLED_SYSTEMIMAGE),$(BOARD_SYSTEMIMAGE_PARTITION_SIZE),yaffs)
+	$(hide) $(call assert-max-image-size,$(INSTALLED_SYSTEMIMAGE),$(BOARD_SYSTEMIMAGE_PARTITION_SIZE))
 
 ifneq (,$(filter systemimage-nodeps snod, $(MAKECMDGOALS)))
 ifeq (true,$(WITH_DEXPREOPT))
@@ -805,10 +1017,11 @@ endif
 #######
 ## system tarball
 define build-systemtarball-target
-    $(call pretty,"Target system fs tarball: $(INSTALLED_SYSTEMTARBALL_TARGET)")
-    $(MKTARBALL) $(FS_GET_STATS) \
-		$(PRODUCT_OUT) system $(PRIVATE_SYSTEM_TAR) \
-		$(INSTALLED_SYSTEMTARBALL_TARGET)
+  $(call pretty,"Target system fs tarball: $(INSTALLED_SYSTEMTARBALL_TARGET)")
+  $(call create-system-vendor-symlink)
+  $(MKTARBALL) $(FS_GET_STATS) \
+    $(PRODUCT_OUT) system $(PRIVATE_SYSTEM_TAR) \
+    $(INSTALLED_SYSTEMTARBALL_TARGET)
 endef
 
 ifndef SYSTEM_TARBALL_FORMAT
@@ -829,25 +1042,32 @@ systemtarball-nodeps: $(FS_GET_STATS) \
 .PHONY: stnod
 stnod: systemtarball-nodeps
 
-# For platform-java goal, add platform as well
-ifneq (,$(filter platform-java, $(MAKECMDGOALS)))
-PLATFORM_ZIP_ADD_JAVA := true
-endif
-
 #######
 ## platform.zip: system, plus other files to be used in PDK fusion build,
 ## in a zip file
+##
+## PDK_PLATFORM_ZIP_PRODUCT_BINARIES is used to store specified files to platform.zip.
+## The variable will be typically set from BoardConfig.mk.
+## Files under out dir will be rejected to prevent possible conflicts with other rules.
+PDK_PLATFORM_ZIP_PRODUCT_BINARIES := $(filter-out $(OUT_DIR)/%,$(PDK_PLATFORM_ZIP_PRODUCT_BINARIES))
 INSTALLED_PLATFORM_ZIP := $(PRODUCT_OUT)/platform.zip
 $(INSTALLED_PLATFORM_ZIP) : $(INTERNAL_SYSTEMIMAGE_FILES)
 	$(call pretty,"Platform zip package: $(INSTALLED_PLATFORM_ZIP)")
 	$(hide) rm -f $@
 	$(hide) cd $(dir $@) && zip -qry $(notdir $@) \
 		$(TARGET_COPY_OUT_SYSTEM) \
-		$(patsubst $(PRODUCT_OUT)/%, %, $(TARGET_OUT_NOTICE_FILES))
-ifeq (true,$(PLATFORM_ZIP_ADD_JAVA))
+		$(patsubst $(PRODUCT_OUT)/%, %, $(TARGET_OUT_NOTICE_FILES)) \
+		$(addprefix symbols/,$(PDK_SYMBOL_FILES_LIST))
+ifdef BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE
+	$(hide) cd $(dir $@) && zip -qry $(notdir $@) \
+		$(TARGET_COPY_OUT_VENDOR)
+endif
+ifneq ($(PDK_PLATFORM_JAVA_ZIP_CONTENTS),)
 	$(hide) cd $(OUT_DIR) && zip -qry $(patsubst $(OUT_DIR)/%,%,$@) $(PDK_PLATFORM_JAVA_ZIP_CONTENTS)
 endif
-
+ifneq ($(PDK_PLATFORM_ZIP_PRODUCT_BINARIES),)
+	$(hide) zip -qry $@ $(PDK_PLATFORM_ZIP_PRODUCT_BINARIES)
+endif
 
 .PHONY: platform
 platform: $(INSTALLED_PLATFORM_ZIP)
@@ -893,12 +1113,15 @@ boottarball-nodeps btnod: $(FS_GET_STATS) \
 INTERNAL_USERDATAIMAGE_FILES := \
     $(filter $(TARGET_OUT_DATA)/%,$(ALL_DEFAULT_INSTALLED_MODULES))
 
-# If we build "tests" at the same time, make sure $(tests_MODULES) get covered.
-ifdef is_tests_build
-INTERNAL_USERDATAIMAGE_FILES += \
-    $(filter $(TARGET_OUT_DATA)/%,$(tests_MODULES))
+# Don't build userdata.img if it's extfs but no partition size
+skip_userdata.img :=
+ifdef INTERNAL_USERIMAGES_EXT_VARIANT
+ifndef BOARD_USERDATAIMAGE_PARTITION_SIZE
+skip_userdata.img := true
+endif
 endif
 
+ifneq ($(skip_userdata.img),true)
 userdataimage_intermediates := \
     $(call intermediates-dir-for,PACKAGING,userdata)
 BUILT_USERDATAIMAGE_TARGET := $(PRODUCT_OUT)/userdata.img
@@ -907,13 +1130,12 @@ define build-userdataimage-target
   $(call pretty,"Target userdata fs image: $(INSTALLED_USERDATAIMAGE_TARGET)")
   @mkdir -p $(TARGET_OUT_DATA)
   @mkdir -p $(userdataimage_intermediates) && rm -rf $(userdataimage_intermediates)/userdata_image_info.txt
-  $(call generate-userimage-prop-dictionary, $(userdataimage_intermediates)/userdata_image_info.txt)
+  $(call generate-userimage-prop-dictionary, $(userdataimage_intermediates)/userdata_image_info.txt, skip_fsck=true)
   $(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH \
       ./build/tools/releasetools/build_image.py \
       $(TARGET_OUT_DATA) $(userdataimage_intermediates)/userdata_image_info.txt $(INSTALLED_USERDATAIMAGE_TARGET)
-  $(hide) $(call assert-max-image-size,$(INSTALLED_USERDATAIMAGE_TARGET),$(BOARD_USERDATAIMAGE_PARTITION_SIZE),yaffs)
+  $(hide) $(call assert-max-image-size,$(INSTALLED_USERDATAIMAGE_TARGET),$(BOARD_USERDATAIMAGE_PARTITION_SIZE))
 endef
-
 
 # We just build this directly to the install location.
 INSTALLED_USERDATAIMAGE_TARGET := $(BUILT_USERDATAIMAGE_TARGET)
@@ -924,6 +1146,9 @@ $(INSTALLED_USERDATAIMAGE_TARGET): $(INTERNAL_USERIMAGES_DEPS) \
 .PHONY: userdataimage-nodeps
 userdataimage-nodeps: | $(INTERNAL_USERIMAGES_DEPS)
 	$(build-userdataimage-target)
+
+endif # not skip_userdata.img
+skip_userdata.img :=
 
 #######
 ## data partition tarball
@@ -960,11 +1185,11 @@ define build-cacheimage-target
   $(call pretty,"Target cache fs image: $(INSTALLED_CACHEIMAGE_TARGET)")
   @mkdir -p $(TARGET_OUT_CACHE)
   @mkdir -p $(cacheimage_intermediates) && rm -rf $(cacheimage_intermediates)/cache_image_info.txt
-  $(call generate-userimage-prop-dictionary, $(cacheimage_intermediates)/cache_image_info.txt)
+  $(call generate-userimage-prop-dictionary, $(cacheimage_intermediates)/cache_image_info.txt, skip_fsck=true)
   $(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH \
       ./build/tools/releasetools/build_image.py \
       $(TARGET_OUT_CACHE) $(cacheimage_intermediates)/cache_image_info.txt $(INSTALLED_CACHEIMAGE_TARGET)
-  $(hide) $(call assert-max-image-size,$(INSTALLED_CACHEIMAGE_TARGET),$(BOARD_CACHEIMAGE_PARTITION_SIZE),yaffs)
+  $(hide) $(call assert-max-image-size,$(INSTALLED_CACHEIMAGE_TARGET),$(BOARD_CACHEIMAGE_PARTITION_SIZE))
 endef
 
 # We just build this directly to the install location.
@@ -977,6 +1202,44 @@ cacheimage-nodeps: | $(INTERNAL_USERIMAGES_DEPS)
 	$(build-cacheimage-target)
 
 endif # BOARD_CACHEIMAGE_FILE_SYSTEM_TYPE
+
+
+# -----------------------------------------------------------------
+# vendor partition image
+ifdef BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE
+INTERNAL_VENDORIMAGE_FILES := \
+    $(filter $(TARGET_OUT_VENDOR)/%,\
+      $(ALL_DEFAULT_INSTALLED_MODULES)\
+      $(ALL_PDK_FUSION_FILES))
+
+# platform.zip depends on $(INTERNAL_VENDORIMAGE_FILES).
+$(INSTALLED_PLATFORM_ZIP) : $(INTERNAL_VENDORIMAGE_FILES)
+
+vendorimage_intermediates := \
+    $(call intermediates-dir-for,PACKAGING,vendor)
+BUILT_VENDORIMAGE_TARGET := $(PRODUCT_OUT)/vendor.img
+
+define build-vendorimage-target
+  $(call pretty,"Target vendor fs image: $(INSTALLED_VENDORIMAGE_TARGET)")
+  @mkdir -p $(TARGET_OUT_VENDOR)
+  @mkdir -p $(vendorimage_intermediates) && rm -rf $(vendorimage_intermediates)/vendor_image_info.txt
+  $(call generate-userimage-prop-dictionary, $(vendorimage_intermediates)/vendor_image_info.txt, skip_fsck=true)
+  $(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH \
+      ./build/tools/releasetools/build_image.py \
+      $(TARGET_OUT_VENDOR) $(vendorimage_intermediates)/vendor_image_info.txt $(INSTALLED_VENDORIMAGE_TARGET)
+  $(hide) $(call assert-max-image-size,$(INSTALLED_VENDORIMAGE_TARGET),$(BOARD_VENDORIMAGE_PARTITION_SIZE))
+endef
+
+# We just build this directly to the install location.
+INSTALLED_VENDORIMAGE_TARGET := $(BUILT_VENDORIMAGE_TARGET)
+$(INSTALLED_VENDORIMAGE_TARGET): $(INTERNAL_USERIMAGES_DEPS) $(INTERNAL_VENDORIMAGE_FILES)
+	$(build-vendorimage-target)
+
+.PHONY: vendorimage-nodeps
+vendorimage-nodeps: | $(INTERNAL_USERIMAGES_DEPS)
+	$(build-vendorimage-target)
+
+endif # BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE
 
 # -----------------------------------------------------------------
 # bring in the installer image generation defines if necessary
@@ -998,7 +1261,13 @@ DISTTOOLS :=  $(HOST_OUT_EXECUTABLES)/minigzip \
 	  $(HOST_OUT_JAVA_LIBRARIES)/dumpkey.jar \
 	  $(HOST_OUT_JAVA_LIBRARIES)/signapk.jar \
 	  $(HOST_OUT_EXECUTABLES)/mkuserimg.sh \
-	  $(HOST_OUT_EXECUTABLES)/make_ext4fs
+	  $(HOST_OUT_EXECUTABLES)/make_ext4fs \
+	  $(HOST_OUT_EXECUTABLES)/simg2img \
+	  $(HOST_OUT_EXECUTABLES)/e2fsck \
+	  $(HOST_OUT_EXECUTABLES)/build_verity_tree \
+	  $(HOST_OUT_EXECUTABLES)/verity_signer \
+	  $(HOST_OUT_EXECUTABLES)/append2simg \
+	  $(HOST_OUT_EXECUTABLES)/boot_signer
 
 OTATOOLS := $(DISTTOOLS) \
 	  $(HOST_OUT_EXECUTABLES)/aapt
@@ -1042,6 +1311,7 @@ built_ota_tools := \
 $(BUILT_TARGET_FILES_PACKAGE): PRIVATE_OTA_TOOLS := $(built_ota_tools)
 
 $(BUILT_TARGET_FILES_PACKAGE): PRIVATE_RECOVERY_API_VERSION := $(RECOVERY_API_VERSION)
+$(BUILT_TARGET_FILES_PACKAGE): PRIVATE_RECOVERY_FSTAB_VERSION := $(RECOVERY_FSTAB_VERSION)
 
 ifeq ($(TARGET_RELEASETOOLS_EXTENSIONS),)
 # default to common dir for device vendor
@@ -1059,7 +1329,9 @@ $(BUILT_TARGET_FILES_PACKAGE): \
 		$(INSTALLED_SYSTEMIMAGE) \
 		$(INSTALLED_USERDATAIMAGE_TARGET) \
 		$(INSTALLED_CACHEIMAGE_TARGET) \
+		$(INSTALLED_VENDORIMAGE_TARGET) \
 		$(INSTALLED_ANDROID_INFO_TXT_TARGET) \
+		$(SELINUX_FC) \
 		$(built_ota_tools) \
 		$(APKCERTS_FILE) \
 		$(HOST_OUT_EXECUTABLES)/fs_config \
@@ -1116,6 +1388,11 @@ endif
 	@# Contents of the data image
 	$(hide) $(call package_files-copy-root, \
 		$(TARGET_OUT_DATA),$(zip_root)/DATA)
+ifdef BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE
+	@# Contents of the vendor image
+	$(hide) $(call package_files-copy-root, \
+		$(TARGET_OUT_VENDOR),$(zip_root)/VENDOR)
+endif
 	@# Extra contents of the OTA package
 	$(hide) mkdir -p $(zip_root)/OTA/bin
 	$(hide) $(ACP) $(INSTALLED_ANDROID_INFO_TXT_TARGET) $(zip_root)/OTA/
@@ -1124,8 +1401,10 @@ endif
 	@# build them.
 	$(hide) mkdir -p $(zip_root)/META
 	$(hide) $(ACP) $(APKCERTS_FILE) $(zip_root)/META/apkcerts.txt
+	$(hide) if test -e $(tool_extensions)/releasetools.py; then $(ACP) $(tool_extensions)/releasetools.py $(zip_root)/META/; fi
 	$(hide)	echo "$(PRODUCT_OTA_PUBLIC_KEYS)" > $(zip_root)/META/otakeys.txt
 	$(hide) echo "recovery_api_version=$(PRIVATE_RECOVERY_API_VERSION)" > $(zip_root)/META/misc_info.txt
+	$(hide) echo "fstab_version=$(PRIVATE_RECOVERY_FSTAB_VERSION)" >> $(zip_root)/META/misc_info.txt
 ifdef BOARD_FLASH_BLOCK_SIZE
 	$(hide) echo "blocksize=$(BOARD_FLASH_BLOCK_SIZE)" >> $(zip_root)/META/misc_info.txt
 endif
@@ -1135,23 +1414,45 @@ endif
 ifdef BOARD_RECOVERYIMAGE_PARTITION_SIZE
 	$(hide) echo "recovery_size=$(BOARD_RECOVERYIMAGE_PARTITION_SIZE)" >> $(zip_root)/META/misc_info.txt
 endif
+ifdef TARGET_RECOVERY_FSTYPE_MOUNT_OPTIONS
+	@# TARGET_RECOVERY_FSTYPE_MOUNT_OPTIONS can be empty to indicate that nothing but defaults should be used.
+	$(hide) echo "recovery_mount_options=$(TARGET_RECOVERY_FSTYPE_MOUNT_OPTIONS)" >> $(zip_root)/META/misc_info.txt
+else
+	$(hide) echo "recovery_mount_options=$(DEFAULT_TARGET_RECOVERY_FSTYPE_MOUNT_OPTIONS)" >> $(zip_root)/META/misc_info.txt
+endif
 	$(hide) echo "tool_extensions=$(tool_extensions)" >> $(zip_root)/META/misc_info.txt
 	$(hide) echo "default_system_dev_certificate=$(DEFAULT_SYSTEM_DEV_CERTIFICATE)" >> $(zip_root)/META/misc_info.txt
 ifdef PRODUCT_EXTRA_RECOVERY_KEYS
 	$(hide) echo "extra_recovery_keys=$(PRODUCT_EXTRA_RECOVERY_KEYS)" >> $(zip_root)/META/misc_info.txt
 endif
+	$(hide) echo 'mkbootimg_args=$(BOARD_MKBOOTIMG_ARGS)' >> $(zip_root)/META/misc_info.txt
+	$(hide) echo "use_set_metadata=1" >> $(zip_root)/META/misc_info.txt
+	$(hide) echo "multistage_support=1" >> $(zip_root)/META/misc_info.txt
+	$(hide) echo "update_rename_support=1" >> $(zip_root)/META/misc_info.txt
+	$(hide) echo "blockimgdiff_versions=1,2" >> $(zip_root)/META/misc_info.txt
+ifneq ($(OEM_THUMBPRINT_PROPERTIES),)
+	# OTA scripts are only interested in fingerprint related properties
+	$(hide) echo "oem_fingerprint_properties=$(OEM_THUMBPRINT_PROPERTIES)" >> $(zip_root)/META/misc_info.txt
+endif
 	$(call generate-userimage-prop-dictionary, $(zip_root)/META/misc_info.txt)
+	$(hide) ./build/tools/releasetools/make_recovery_patch $(zip_root) $(zip_root)
 	@# Zip everything up, preserving symlinks
 	$(hide) (cd $(zip_root) && zip -qry ../$(notdir $@) .)
-	@# Run fs_config on all the system, boot ramdisk, and recovery ramdisk files in the zip, and save the output
-	$(hide) zipinfo -1 $@ | awk 'BEGIN { FS="SYSTEM/" } /^SYSTEM\// {print "system/" $$2}' | $(HOST_OUT_EXECUTABLES)/fs_config > $(zip_root)/META/filesystem_config.txt
-	$(hide) zipinfo -1 $@ | awk 'BEGIN { FS="BOOT/RAMDISK/" } /^BOOT\/RAMDISK\// {print $$2}' | $(HOST_OUT_EXECUTABLES)/fs_config > $(zip_root)/META/boot_filesystem_config.txt
-	$(hide) zipinfo -1 $@ | awk 'BEGIN { FS="RECOVERY/RAMDISK/" } /^RECOVERY\/RAMDISK\// {print $$2}' | $(HOST_OUT_EXECUTABLES)/fs_config > $(zip_root)/META/recovery_filesystem_config.txt
+	@# Run fs_config on all the system, vendor, boot ramdisk,
+	@# and recovery ramdisk files in the zip, and save the output
+	$(hide) zipinfo -1 $@ | awk 'BEGIN { FS="SYSTEM/" } /^SYSTEM\// {print "system/" $$2}' | $(HOST_OUT_EXECUTABLES)/fs_config -C -S $(SELINUX_FC) > $(zip_root)/META/filesystem_config.txt
+	$(hide) zipinfo -1 $@ | awk 'BEGIN { FS="VENDOR/" } /^VENDOR\// {print "vendor/" $$2}' | $(HOST_OUT_EXECUTABLES)/fs_config -C -S $(SELINUX_FC) > $(zip_root)/META/vendor_filesystem_config.txt
+	$(hide) zipinfo -1 $@ | awk 'BEGIN { FS="BOOT/RAMDISK/" } /^BOOT\/RAMDISK\// {print $$2}' | $(HOST_OUT_EXECUTABLES)/fs_config -C -S $(SELINUX_FC) > $(zip_root)/META/boot_filesystem_config.txt
+	$(hide) zipinfo -1 $@ | awk 'BEGIN { FS="RECOVERY/RAMDISK/" } /^RECOVERY\/RAMDISK\// {print $$2}' | $(HOST_OUT_EXECUTABLES)/fs_config -C -S $(SELINUX_FC) > $(zip_root)/META/recovery_filesystem_config.txt
 	$(hide) (cd $(zip_root) && zip -q ../$(notdir $@) META/*filesystem_config.txt)
+	$(hide) ./build/tools/releasetools/add_img_to_target_files -p $(HOST_OUT) $@
 
-
+.PHONY: target-files-package
 target-files-package: $(BUILT_TARGET_FILES_PACKAGE)
 
+ifneq ($(filter $(MAKECMDGOALS),target-files-package),)
+$(call dist-for-goals, target-files-package, $(BUILT_TARGET_FILES_PACKAGE))
+endif
 
 ifneq ($(TARGET_PRODUCT),sdk)
 ifeq ($(filter generic%,$(TARGET_DEVICE)),)
@@ -1171,21 +1472,23 @@ INTERNAL_OTA_PACKAGE_TARGET := $(PRODUCT_OUT)/$(name).zip
 
 $(INTERNAL_OTA_PACKAGE_TARGET): KEY_CERT_PAIR := $(DEFAULT_KEY_CERT_PAIR)
 
-ifeq ($(TARGET_RELEASETOOL_OTA_FROM_TARGET_SCRIPT),)
-	OTA_FROM_TARGET_SCRIPT := ./build/tools/releasetools/ota_from_target_files
-else
-	OTA_FROM_TARGET_SCRIPT := $(TARGET_RELEASETOOL_OTA_FROM_TARGET_SCRIPT)
-endif
-
 $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 	@echo "Package OTA: $@"
-	$(OTA_FROM_TARGET_SCRIPT) -v \
+	$(hide) MKBOOTIMG=$(MKBOOTIMG) \
+	   ./build/tools/releasetools/ota_from_target_files -v \
+	   --block \
 	   -p $(HOST_OUT) \
 	   -k $(KEY_CERT_PAIR) \
+	   $(if $(OEM_OTA_CONFIG), -o $(OEM_OTA_CONFIG)) \
 	   $(BUILT_TARGET_FILES_PACKAGE) $@
 
 .PHONY: otapackage
 otapackage: $(INTERNAL_OTA_PACKAGE_TARGET)
+
+endif    # recovery_fstab is defined
+endif    # TARGET_NO_KERNEL != true
+endif    # TARGET_DEVICE != generic*
+endif    # TARGET_PRODUCT != sdk
 
 # -----------------------------------------------------------------
 # The update package
@@ -1198,80 +1501,15 @@ name := $(name)-img-$(FILE_NAME_TAG)
 
 INTERNAL_UPDATE_PACKAGE_TARGET := $(PRODUCT_OUT)/$(name).zip
 
-ifeq ($(TARGET_RELEASETOOLS_EXTENSIONS),)
-# default to common dir for device vendor
-$(INTERNAL_UPDATE_PACKAGE_TARGET): extensions := $(TARGET_DEVICE_DIR)/../common
-else
-$(INTERNAL_UPDATE_PACKAGE_TARGET): extensions := $(TARGET_RELEASETOOLS_EXTENSIONS)
-endif
-
-ifeq ($(TARGET_RELEASETOOL_IMG_FROM_TARGET_SCRIPT),)
-	IMG_FROM_TARGET_SCRIPT := ./build/tools/releasetools/img_from_target_files
-else
-	IMG_FROM_TARGET_SCRIPT := $(TARGET_RELEASETOOL_IMG_FROM_TARGET_SCRIPT)
-endif
-
 $(INTERNAL_UPDATE_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
 	@echo "Package: $@"
-	$(IMG_FROM_TARGET_SCRIPT) -v \
-	   -s $(extensions) \
+	$(hide) MKBOOTIMG=$(MKBOOTIMG) \
+	   ./build/tools/releasetools/img_from_target_files -v \
 	   -p $(HOST_OUT) \
 	   $(BUILT_TARGET_FILES_PACKAGE) $@
 
 .PHONY: updatepackage
 updatepackage: $(INTERNAL_UPDATE_PACKAGE_TARGET)
-
-endif    # recovery_fstab is defined
-endif    # TARGET_NO_KERNEL != true
-endif    # TARGET_DEVICE != generic*
-endif    # TARGET_PRODUCT != sdk
-
-# -----------------------------------------------------------------
-# A zip of the tests that are built when running "make tests".
-# This is very similar to BUILT_TARGET_FILES_PACKAGE, but we
-# only grab DATA, and it's called "*-tests-*.zip".
-#
-name := $(TARGET_PRODUCT)
-ifeq ($(TARGET_BUILD_TYPE),debug)
-  name := $(name)_debug
-endif
-name := $(name)-tests-$(FILE_NAME_TAG)
-
-intermediates := $(call intermediates-dir-for,PACKAGING,tests_zip)
-BUILT_TESTS_ZIP_PACKAGE := $(intermediates)/$(name).zip
-$(BUILT_TESTS_ZIP_PACKAGE): intermediates := $(intermediates)
-$(BUILT_TESTS_ZIP_PACKAGE): zip_root := $(intermediates)/$(name)
-
-# Depending on the images guarantees that the underlying
-# directories are up-to-date.
-$(BUILT_TESTS_ZIP_PACKAGE): \
-    $(INSTALLED_USERDATAIMAGE_TARGET) \
-    | $(ACP)
-	@echo "Package test files: $@"
-	$(hide) rm -rf $@ $(zip_root)
-	$(hide) mkdir -p $(dir $@) $(zip_root)
-	@# Contents of the data image
-	$(hide) $(call package_files-copy-root, \
-		$(TARGET_OUT_DATA),$(zip_root)/DATA)
-	$(hide) (cd $(zip_root) && zip -qry ../$(notdir $@) .)
-
-.PHONY: tests-zip-package
-tests-zip-package: $(BUILT_TESTS_ZIP_PACKAGE)
-
-# Target needed by tests build
-.PHONY: tests-build-target
-tests-build-target: $(BUILT_TESTS_ZIP_PACKAGE)
-
-ifneq (,$(filter $(MAKECMDGOALS),tests-build-target))
-  $(call dist-for-goals, tests-build-target, \
-          $(BUILT_TESTS_ZIP_PACKAGE))
-endif
-
-.PHONY: tests
-tests: $(BUILT_TESTS_ZIP_PACKAGE)
-ifneq (,$(filter tests, $(MAKECMDGOALS)))
-$(call dist-for-goals, tests, $(BUILT_TESTS_ZIP_PACKAGE))
-endif
 
 # -----------------------------------------------------------------
 # A zip of the symbols directory.  Keep the full paths to make it
@@ -1284,10 +1522,14 @@ endif
 name := $(name)-symbols-$(FILE_NAME_TAG)
 
 SYMBOLS_ZIP := $(PRODUCT_OUT)/$(name).zip
+# For apps_only build we'll establish the dependency later in build/core/main.mk.
+ifndef TARGET_BUILD_APPS
 $(SYMBOLS_ZIP): $(INSTALLED_SYSTEMIMAGE) $(INSTALLED_BOOTIMAGE_TARGET)
+endif
+$(SYMBOLS_ZIP):
 	@echo "Package symbols: $@"
 	$(hide) rm -rf $@
-	$(hide) mkdir -p $(dir $@)
+	$(hide) mkdir -p $(dir $@) $(TARGET_OUT_UNSTRIPPED)
 	$(hide) zip -qr $@ $(TARGET_OUT_UNSTRIPPED)
 
 # -----------------------------------------------------------------
@@ -1305,18 +1547,44 @@ $(APPS_ZIP): $(INSTALLED_SYSTEMIMAGE)
 	@echo "Package apps: $@"
 	$(hide) rm -rf $@
 	$(hide) mkdir -p $(dir $@)
-	$(hide) zip -qj $@ $(TARGET_OUT_APPS)/*
+	$(hide) zip -qj $@ $(TARGET_OUT_APPS)/*/*.apk $(TARGET_OUT_APPS_PRIVILEGED)/*/*.apk
 
 
 #------------------------------------------------------------------
 # A zip of emma code coverage meta files. Generated for fully emma
 # instrumented build.
 #
+ifeq (true,$(EMMA_INSTRUMENT))
 EMMA_META_ZIP := $(PRODUCT_OUT)/emma_meta.zip
-$(EMMA_META_ZIP): $(INSTALLED_SYSTEMIMAGE)
+# the dependency will be set up later in build/core/main.mk.
+$(EMMA_META_ZIP) :
 	@echo "Collecting Emma coverage meta files."
-	$(hide) find $(TARGET_COMMON_OUT_ROOT) -name "coverage.em" | \
+	$(hide) find $(TARGET_COMMON_OUT_ROOT) $(HOST_COMMON_OUT_ROOT) -name "coverage.em" | \
 		zip -@ -q $@
+
+endif # EMMA_INSTRUMENT=true
+
+#------------------------------------------------------------------
+# A zip of Proguard obfuscation dictionary files.
+# Only for apps_only build.
+#
+ifdef TARGET_BUILD_APPS
+PROGUARD_DICT_ZIP := $(PRODUCT_OUT)/$(TARGET_PRODUCT)-proguard-dict-$(FILE_NAME_TAG).zip
+# the dependency will be set up later in build/core/main.mk.
+$(PROGUARD_DICT_ZIP) :
+	@echo "Packaging Proguard obfuscation dictionary files."
+	$(hide) dict_files=`find $(TARGET_OUT_COMMON_INTERMEDIATES)/APPS -name proguard_dictionary`; \
+		if [ -n "$$dict_files" ]; then \
+		  unobfuscated_jars=$${dict_files//proguard_dictionary/classes.jar}; \
+		  zip -q $@ $$dict_files $$unobfuscated_jars; \
+		else \
+		  touch $(dir $@)/dummy; \
+		  (cd $(dir $@) && zip -q $(notdir $@) dummy); \
+		  zip -qd $@ dummy; \
+		  rm $(dir $@)/dummy; \
+		fi
+
+endif # TARGET_BUILD_APPS
 
 # -----------------------------------------------------------------
 # dalvik something
@@ -1355,7 +1623,7 @@ endif
 # The SDK
 
 # The SDK includes host-specific components, so it belongs under HOST_OUT.
-sdk_dir := $(HOST_OUT)/sdk
+sdk_dir := $(HOST_OUT)/sdk/$(TARGET_PRODUCT)
 
 # Build a name that looks like:
 #
@@ -1370,7 +1638,7 @@ else
   INTERNAL_SDK_HOST_OS_NAME := $(HOST_OS)
 endif
 ifneq ($(HOST_OS),windows)
-  INTERNAL_SDK_HOST_OS_NAME := $(INTERNAL_SDK_HOST_OS_NAME)-$(HOST_ARCH)
+  INTERNAL_SDK_HOST_OS_NAME := $(INTERNAL_SDK_HOST_OS_NAME)-$(SDK_HOST_ARCH)
 endif
 sdk_name := $(sdk_name)_$(INTERNAL_SDK_HOST_OS_NAME)
 
@@ -1384,7 +1652,6 @@ ifeq ($(strip $(ATREE_FILES)),)
 ATREE_FILES := \
 	$(ALL_PREBUILT) \
 	$(ALL_COPIED_HEADERS) \
-	$(ALL_GENERATED_SOURCES) \
 	$(ALL_DEFAULT_INSTALLED_MODULES) \
 	$(INSTALLED_RAMDISK_TARGET) \
 	$(ALL_DOCS) \
@@ -1393,27 +1660,10 @@ endif
 
 atree_dir := development/build
 
-# sdk/build/tools.atree contains the generic rules, while
-#
-# sdk/build/tools.$(TARGET_ARCH).atree contains target-specific rules
-# the latter is optional.
-#
-sdk_tools_atree_files := sdk/build/tools.atree
-ifneq (,$(strip $(wildcard sdk/build/tools.$(TARGET_ARCH).atree)))
-  sdk_tools_atree_files += sdk/build/tools.$(TARGET_ARCH).atree
-endif
-ifneq (,$(strip $(wildcard sdk/build/tools.$(HOST_OS).atree)))
-  sdk_tools_atree_files += sdk/build/tools.$(HOST_OS).atree
-endif
-ifneq (,$(strip $(wildcard sdk/build/tools.$(HOST_OS)-$(HOST_ARCH).atree)))
-  sdk_tools_atree_files += sdk/build/tools.$(HOST_OS)-$(HOST_ARCH).atree
-endif
 
 sdk_atree_files := \
 	$(atree_dir)/sdk.exclude.atree \
-	$(atree_dir)/sdk.atree \
-	$(atree_dir)/sdk-$(HOST_OS)-$(HOST_ARCH).atree \
-	$(sdk_tools_atree_files)
+	$(atree_dir)/sdk-$(HOST_OS)-$(SDK_HOST_ARCH).atree
 
 # development/build/sdk-android-<abi>.atree is used to differentiate
 # between architecture models (e.g. ARMv5TE versus ARMv7) when copying
@@ -1422,6 +1672,14 @@ sdk_atree_files := \
 ifneq (,$(strip $(wildcard $(atree_dir)/sdk-android-$(TARGET_CPU_ABI).atree)))
   sdk_atree_files += $(atree_dir)/sdk-android-$(TARGET_CPU_ABI).atree
 endif
+
+ifneq ($(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SDK_ATREE_FILES),)
+sdk_atree_files += $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SDK_ATREE_FILES)
+else
+sdk_atree_files += $(atree_dir)/sdk.atree
+endif
+
+include $(BUILD_SYSTEM)/sdk_font.mk
 
 deps := \
 	$(target_notice_file_txt) \
@@ -1434,11 +1692,10 @@ deps := \
 	$(INSTALLED_SDK_BUILD_PROP_TARGET) \
 	$(INSTALLED_BUILD_PROP_TARGET) \
 	$(ATREE_FILES) \
-	$(atree_dir)/sdk.atree \
-	$(sdk_tools_atree_files) \
+	$(sdk_atree_files) \
 	$(HOST_OUT_EXECUTABLES)/atree \
-	$(ALL_HOST_INSTALLED_FILES) \
-	$(HOST_OUT_EXECUTABLES)/line_endings
+	$(HOST_OUT_EXECUTABLES)/line_endings \
+	$(SDK_FONT_DEPS)
 
 INTERNAL_SDK_TARGET := $(sdk_dir)/$(sdk_name).zip
 $(INTERNAL_SDK_TARGET): PRIVATE_NAME := $(sdk_name)
@@ -1461,6 +1718,7 @@ $(INTERNAL_SDK_TARGET): $(deps)
 	  fi; \
 	done; \
 	if [ $$FAIL ]; then exit 1; fi
+	$(hide) echo $(notdir $(SDK_FONT_DEPS)) | tr " " "\n"  > $(SDK_FONT_TEMP)/fontsInSdk.txt
 	$(hide) ( \
 		ATREE_STRIP="strip -x" \
 		$(HOST_OUT_EXECUTABLES)/atree \
@@ -1476,10 +1734,10 @@ $(INTERNAL_SDK_TARGET): $(deps)
 			-v "TARGET_ARCH=$(TARGET_ARCH)" \
 			-v "TARGET_CPU_ABI=$(TARGET_CPU_ABI)" \
 			-v "DLL_EXTENSION=$(HOST_SHLIB_SUFFIX)" \
+			-v "FONT_OUT=$(SDK_FONT_TEMP)" \
 			-o $(PRIVATE_DIR) && \
 		cp -f $(target_notice_file_txt) \
 				$(PRIVATE_DIR)/system-images/android-$(PLATFORM_VERSION)/$(TARGET_CPU_ABI)/NOTICE.txt && \
-		cp -f $(tools_notice_file_txt) $(PRIVATE_DIR)/tools/NOTICE.txt && \
 		cp -f $(tools_notice_file_txt) $(PRIVATE_DIR)/platform-tools/NOTICE.txt && \
 		HOST_OUT_EXECUTABLES=$(HOST_OUT_EXECUTABLES) HOST_OS=$(HOST_OS) \
 			development/build/tools/sdk_clean.sh $(PRIVATE_DIR) && \
@@ -1503,21 +1761,26 @@ INTERNAL_FINDBUGS_XML_TARGET := $(PRODUCT_OUT)/findbugs.xml
 INTERNAL_FINDBUGS_HTML_TARGET := $(PRODUCT_OUT)/findbugs.html
 $(INTERNAL_FINDBUGS_XML_TARGET): $(ALL_FINDBUGS_FILES)
 	@echo UnionBugs: $@
-	$(hide) prebuilt/common/findbugs/bin/unionBugs $(ALL_FINDBUGS_FILES) \
+	$(hide) $(FINDBUGS_DIR)/unionBugs $(ALL_FINDBUGS_FILES) \
 	> $@
 $(INTERNAL_FINDBUGS_HTML_TARGET): $(INTERNAL_FINDBUGS_XML_TARGET)
 	@echo ConvertXmlToText: $@
-	$(hide) prebuilt/common/findbugs/bin/convertXmlToText -html:fancy.xsl \
-	$(INTERNAL_FINDBUGS_XML_TARGET)	> $@
+	$(hide) $(FINDBUGS_DIR)/convertXmlToText -html:fancy.xsl \
+	$(INTERNAL_FINDBUGS_XML_TARGET) > $@
 
 # -----------------------------------------------------------------
 # Findbugs
 
 # -----------------------------------------------------------------
 # These are some additional build tasks that need to be run.
+ifneq ($(dont_bother),true)
 include $(sort $(wildcard $(BUILD_SYSTEM)/tasks/*.mk))
 -include $(sort $(wildcard vendor/*/build/tasks/*.mk))
 -include $(sort $(wildcard device/*/build/tasks/*.mk))
+# Also the project-specific tasks
+-include $(sort $(wildcard vendor/*/*/build/tasks/*.mk))
+-include $(sort $(wildcard device/*/*/build/tasks/*.mk))
+endif
 
 # -----------------------------------------------------------------
 # Create SDK repository packages. Must be done after tasks/* since

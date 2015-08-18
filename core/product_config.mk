@@ -82,7 +82,7 @@ endef
 # These are the valid values of TARGET_BUILD_VARIANT.  Also, if anything else is passed
 # as the variant in the PRODUCT-$TARGET_BUILD_PRODUCT-$TARGET_BUILD_VARIANT form,
 # it will be treated as a goal, and the eng variant will be used.
-INTERNAL_VALID_VARIANTS := user userdebug eng tests
+INTERNAL_VALID_VARIANTS := user userdebug eng
 
 # ---------------------------------------------------------------
 # Provide "PRODUCT-<prodname>-<goal>" targets, which lets you build
@@ -109,6 +109,10 @@ ifdef product_goals
   # The variant they want
   TARGET_BUILD_VARIANT := $(word 2,$(product_goals))
 
+  ifeq ($(TARGET_BUILD_VARIANT),tests)
+    $(error "tests" has been deprecated as a build variant. Use it as a build goal instead.)
+  endif
+
   # The build server wants to do make PRODUCT-dream-installclean
   # which really means TARGET_PRODUCT=dream make installclean.
   ifneq ($(filter-out $(INTERNAL_VALID_VARIANTS),$(TARGET_BUILD_VARIANT)),)
@@ -117,11 +121,6 @@ ifdef product_goals
     default_goal_substitution :=
   else
     default_goal_substitution := $(DEFAULT_GOAL)
-  endif
-
-  # For tests build, only build tests-build-target
-  ifeq (tests,$(TARGET_BUILD_VARIANT))
-    default_goal_substitution := tests-build-target
   endif
 
   # Replace the PRODUCT-* goal with the build goal that it refers to.
@@ -247,6 +246,43 @@ current_product_makefile :=
 all_product_makefiles :=
 all_product_configs :=
 
+
+#############################################################################
+# TODO: Remove this hack once only 1 runtime is left.
+# Include the runtime product makefile based on the product's PRODUCT_RUNTIMES
+$(call clear-var-list, $(_product_var_list))
+
+# Set PRODUCT_RUNTIMES, allowing buildspec to override using OVERRIDE_RUNTIMES
+product_runtimes := $(sort $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_RUNTIMES))
+ifneq ($(OVERRIDE_RUNTIMES),)
+  $(info Overriding PRODUCT_RUNTIMES=$(product_runtimes) with $(OVERRIDE_RUNTIMES))
+  product_runtimes := $(OVERRIDE_RUNTIMES)
+endif
+$(foreach runtime, $(product_runtimes), $(eval include $(SRC_TARGET_DIR)/product/$(runtime).mk))
+$(foreach v, $(_product_var_list), $(if $($(v)),\
+    $(eval PRODUCTS.$(INTERNAL_PRODUCT).$(v) += $(sort $($(v))))))
+
+$(call clear-var-list, $(_product_var_list))
+# Now we can assign to PRODUCT_RUNTIMES
+PRODUCT_RUNTIMES := $(product_runtimes)
+product_runtimes :=
+
+PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_PROPERTY_OVERRIDES += persist.sys.dalvik.vm.lib.2=$(DALVIK_VM_LIB)
+
+ifeq ($(words $(PRODUCT_RUNTIMES)),1)
+  # If we only have one runtime, we can strip classes.dex by default during dex_preopt
+  DEX_PREOPT_DEFAULT := true
+else
+  # If we have more than one, we leave the classes.dex alone for post-boot analysis
+  DEX_PREOPT_DEFAULT := nostripping
+endif
+
+#############################################################################
+
+# A list of module names of BOOTCLASSPATH (jar files)
+PRODUCT_BOOT_JARS := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_BOOT_JARS))
+PRODUCT_SYSTEM_SERVER_JARS := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SYSTEM_SERVER_JARS))
+
 # Find the device that this product maps to.
 TARGET_DEVICE := $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_DEVICE)
 
@@ -268,26 +304,23 @@ ifneq (,$(extra_locales))
 endif
 
 # Add PRODUCT_LOCALES to PRODUCT_AAPT_CONFIG
-PRODUCT_AAPT_CONFIG := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_AAPT_CONFIG))
-PRODUCT_AAPT_CONFIG := $(PRODUCT_LOCALES) $(PRODUCT_AAPT_CONFIG)
+PRODUCT_AAPT_CONFIG := $(strip $(PRODUCT_LOCALES) $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_AAPT_CONFIG))
 PRODUCT_AAPT_PREF_CONFIG := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_AAPT_PREF_CONFIG))
+PRODUCT_AAPT_PREBUILT_DPI := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_AAPT_PREBUILT_DPI))
 
-# Default to medium-density assets.
-# (Can be overridden in the device config, e.g.: PRODUCT_AAPT_CONFIG += hdpi)
-PRODUCT_AAPT_CONFIG := $(strip \
-    $(PRODUCT_AAPT_CONFIG) \
-    $(if $(filter %dpi,$(PRODUCT_AAPT_CONFIG)),,mdpi))
-PRODUCT_AAPT_PREF_CONFIG := $(strip $(PRODUCT_AAPT_PREF_CONFIG))
-
-# Everyone gets nodpi assets which are density-independent.
-PRODUCT_AAPT_CONFIG += nodpi
+# Keep a copy of the space-separated config
+PRODUCT_AAPT_CONFIG_SP := $(PRODUCT_AAPT_CONFIG)
 
 # Convert spaces to commas.
-comma := ,
 PRODUCT_AAPT_CONFIG := \
     $(subst $(space),$(comma),$(strip $(PRODUCT_AAPT_CONFIG)))
-PRODUCT_AAPT_PREF_CONFIG := \
-    $(subst $(space),$(comma),$(strip $(PRODUCT_AAPT_PREF_CONFIG)))
+
+# product-scoped aapt flags
+PRODUCT_AAPT_FLAGS :=
+ifneq ($(filter en_XA ar_XB,$(PRODUCT_LOCALES)),)
+# Force generating resources for pseudo-locales.
+PRODUCT_AAPT_FLAGS += --pseudo-localize
+endif
 
 PRODUCT_BRAND := $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_BRAND))
 
@@ -320,11 +353,12 @@ ifneq (1,$(words $(PRODUCT_DEFAULT_DEV_CERTIFICATE)))
 endif
 endif
 
-# A list of words like <source path>:<destination path>.  The file at
-# the source path should be copied to the destination path when building
-# this product.  <destination path> is relative to $(PRODUCT_OUT), so
-# it should look like, e.g., "system/etc/file.xml".  The rules
-# for these copy steps are defined in config/Makefile.
+# A list of words like <source path>:<destination path>[:<owner>].
+# The file at the source path should be copied to the destination path
+# when building  this product.  <destination path> is relative to
+# $(PRODUCT_OUT), so it should look like, e.g., "system/etc/file.xml".
+# The rules for these copy steps are defined in build/core/Makefile.
+# The optional :<owner> is used to indicate the owner of a vendor file.
 PRODUCT_COPY_FILES := \
     $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_COPY_FILES))
 
@@ -366,3 +400,25 @@ PRODUCT_OTA_PUBLIC_KEYS := $(sort \
 
 PRODUCT_EXTRA_RECOVERY_KEYS := $(sort \
     $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_EXTRA_RECOVERY_KEYS))
+
+# If there is no room in /system for the image, place it in /data
+PRODUCT_DEX_PREOPT_IMAGE_IN_DATA := \
+    $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_DEX_PREOPT_IMAGE_IN_DATA))
+
+PRODUCT_DEX_PREOPT_DEFAULT_FLAGS := \
+    $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_DEX_PREOPT_DEFAULT_FLAGS))
+PRODUCT_DEX_PREOPT_BOOT_FLAGS := \
+    $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_DEX_PREOPT_BOOT_FLAGS))
+# Resolve and setup per-module dex-preopot configs.
+PRODUCT_DEX_PREOPT_MODULE_CONFIGS := \
+    $(strip $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_DEX_PREOPT_MODULE_CONFIGS))
+# If a module has multiple setups, the first takes precedence.
+_pdpmc_modules :=
+$(foreach c,$(PRODUCT_DEX_PREOPT_MODULE_CONFIGS),\
+  $(eval m := $(firstword $(subst =,$(space),$(c))))\
+  $(if $(filter $(_pdpmc_modules),$(m)),,\
+    $(eval _pdpmc_modules += $(m))\
+    $(eval cf := $(patsubst $(m)=%,%,$(c)))\
+    $(eval cf := $(subst $(_PDPMC_SP_PLACE_HOLDER),$(space),$(cf)))\
+    $(eval DEXPREOPT.$(TARGET_PRODUCT).$(m).CONFIG := $(cf))))
+_pdpmc_modules :=

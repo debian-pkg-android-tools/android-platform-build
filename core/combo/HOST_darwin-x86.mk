@@ -17,139 +17,101 @@
 # Configuration for Darwin (Mac OS X) on x86.
 # Included by combo/select.mk
 
-ifneq ($(strip $(BUILD_HOST_64bit)),)
-# By default we build everything in 32-bit, because it gives us
-# more consistency between the host tools and the target.
-# BUILD_HOST_64bit=1 overrides it for tool like emulator
-# which can benefit from 64-bit host arch.
-HOST_GLOBAL_CFLAGS += -m64
-HOST_GLOBAL_LDFLAGS += -m64
-else
-HOST_GLOBAL_CFLAGS += -m32
-HOST_GLOBAL_LDFLAGS += -m32
-endif # BUILD_HOST_64bit
+$(combo_2nd_arch_prefix)HOST_GLOBAL_CFLAGS += -m32
+$(combo_2nd_arch_prefix)HOST_GLOBAL_LDFLAGS += -m32
 
 ifneq ($(strip $(BUILD_HOST_static)),)
 # Statically-linked binaries are desirable for sandboxed environment
-HOST_GLOBAL_LDFLAGS += -static
+$(combo_2nd_arch_prefix)HOST_GLOBAL_LDFLAGS += -static
 endif # BUILD_HOST_static
 
-build_mac_version := $(shell sw_vers -productVersion)
+# Workaround differences in inttypes.h between host and target.
+# See bug 12708004.
+$(combo_2nd_arch_prefix)HOST_GLOBAL_CFLAGS += -D__STDC_FORMAT_MACROS -D__STDC_CONSTANT_MACROS
 
-ifneq ($(strip $(BUILD_MAC_SDK_EXPERIMENTAL)),)
-# SDK 10.7 and higher is not fully compatible with Android.
-mac_sdk_versions_supported :=  10.7 10.8
+include $(BUILD_COMBOS)/mac_version.mk
+
+$(combo_2nd_arch_prefix)HOST_TOOLCHAIN_ROOT := prebuilts/gcc/darwin-x86/host/i686-apple-darwin-4.2.1
+$(combo_2nd_arch_prefix)HOST_TOOLCHAIN_PREFIX := $($(combo_2nd_arch_prefix)HOST_TOOLCHAIN_ROOT)/bin/i686-apple-darwin$(gcc_darwin_version)
+# Don't do anything if the toolchain is not there
+ifneq (,$(strip $(wildcard $($(combo_2nd_arch_prefix)HOST_TOOLCHAIN_PREFIX)-gcc)))
+$(combo_2nd_arch_prefix)HOST_CC  := $($(combo_2nd_arch_prefix)HOST_TOOLCHAIN_PREFIX)-gcc
+$(combo_2nd_arch_prefix)HOST_CXX := $($(combo_2nd_arch_prefix)HOST_TOOLCHAIN_PREFIX)-g++
+ifneq ($(filter 10.8 10.9, $(mac_sdk_version)),)
+# Mac SDK 10.8+ no longer has stdarg.h, etc
+host_toolchain_header := $($(combo_2nd_arch_prefix)HOST_TOOLCHAIN_ROOT)/lib/gcc/i686-apple-darwin$(gcc_darwin_version)/4.2.1/include
+$(combo_2nd_arch_prefix)HOST_GLOBAL_CFLAGS += -isystem $(host_toolchain_header)
+endif
 else
-mac_sdk_versions_supported :=  10.6
-endif # BUILD_MAC_SDK_EXPERIMENTAL
-mac_sdk_versions_installed := $(shell xcodebuild -showsdks |grep macosx | sort | sed -e "s/.*macosx//g")
-mac_sdk_version := $(firstword $(filter $(mac_sdk_versions_installed), $(mac_sdk_versions_supported)))
-ifeq ($(mac_sdk_version),)
-mac_sdk_version := $(firstword $(mac_sdk_versions_supported))
-endif
+$(combo_2nd_arch_prefix)HOST_CC := gcc
+$(combo_2nd_arch_prefix)HOST_CXX := g++
+endif # $(HOST_TOOLCHAIN_PREFIX)-gcc exists
 
-mac_sdk_path := $(shell xcode-select -print-path)
-ifeq ($(findstring /Applications,$(mac_sdk_path)),)
-# Legacy Xcode
-mac_sdk_root := /Developer/SDKs/MacOSX$(mac_sdk_version).sdk
-else
-#  Xcode 4.4(App Store) or higher
-# /Applications/Xcode*.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.?.sdk
-mac_sdk_root := $(mac_sdk_path)/Platforms/MacOSX.platform/Developer/SDKs/MacOSX$(mac_sdk_version).sdk
-endif
+# gcc location for clang; to be updated when clang is updated
+# HOST_TOOLCHAIN_ROOT is a Darwin-specific define
+$(combo_2nd_arch_prefix)HOST_TOOLCHAIN_FOR_CLANG := $($(combo_2nd_arch_prefix)HOST_TOOLCHAIN_ROOT)
 
-ifeq ($(wildcard $(mac_sdk_root)),)
-$(warning *****************************************************)
-$(warning * Can not find SDK $(mac_sdk_version) at $(mac_sdk_root))
-ifeq ($(strip $(BUILD_MAC_SDK_EXPERIMENTAL)),)
-$(warning * If you wish to build using higher version of SDK, )
-$(warning * try setting BUILD_MAC_SDK_EXPERIMENTAL=1 before )
-$(warning * rerunning this command )
-endif
-$(warning *****************************************************)
-$(error Stop.)
-endif
+$(combo_2nd_arch_prefix)HOST_AR := $(AR)
 
-HOST_GLOBAL_CFLAGS += -isysroot $(mac_sdk_root) -mmacosx-version-min=$(mac_sdk_version)
-HOST_GLOBAL_LDFLAGS += -isysroot $(mac_sdk_root) -mmacosx-version-min=$(mac_sdk_version)
+$(combo_2nd_arch_prefix)HOST_GLOBAL_CFLAGS += -isysroot $(mac_sdk_root) -mmacosx-version-min=$(mac_sdk_version) -DMACOSX_DEPLOYMENT_TARGET=$(mac_sdk_version)
+$(combo_2nd_arch_prefix)HOST_GLOBAL_LDFLAGS += -isysroot $(mac_sdk_root) -Wl,-syslibroot,$(mac_sdk_root) -mmacosx-version-min=$(mac_sdk_version)
 
-HOST_GLOBAL_CFLAGS += -fPIC
-HOST_NO_UNDEFINED_LDFLAGS := -Wl,-undefined,error
+$(combo_2nd_arch_prefix)HOST_GLOBAL_CFLAGS += -fPIC -funwind-tables
+$(combo_2nd_arch_prefix)HOST_NO_UNDEFINED_LDFLAGS := -Wl,-undefined,error
 
-HOST_CC := gcc
-HOST_CXX := g++
-HOST_AR := $(AR)
-HOST_STRIP := $(STRIP)
-HOST_STRIP_COMMAND = $(HOST_STRIP) --strip-debug $< -o $@
+$(combo_2nd_arch_prefix)HOST_SHLIB_SUFFIX := .dylib
+$(combo_2nd_arch_prefix)HOST_JNILIB_SUFFIX := .jnilib
 
-HOST_SHLIB_SUFFIX := .dylib
-HOST_JNILIB_SUFFIX := .jnilib
+# TODO: add AndroidConfig.h for darwin-x86_64
+$(combo_2nd_arch_prefix)HOST_GLOBAL_CFLAGS += \
+    -include $(call select-android-config-h,darwin-x86)
 
-HOST_GLOBAL_CFLAGS += \
-	-include $(call select-android-config-h,darwin-x86)
 ifneq ($(filter 10.7 10.7.% 10.8 10.8.%, $(build_mac_version)),)
-       HOST_RUN_RANLIB_AFTER_COPYING := false
+       $(combo_2nd_arch_prefix)HOST_RUN_RANLIB_AFTER_COPYING := false
 else
-       HOST_RUN_RANLIB_AFTER_COPYING := true
+       $(combo_2nd_arch_prefix)HOST_RUN_RANLIB_AFTER_COPYING := true
        PRE_LION_DYNAMIC_LINKER_OPTIONS := -Wl,-dynamic
 endif
-HOST_GLOBAL_ARFLAGS := cqs
+$(combo_2nd_arch_prefix)HOST_GLOBAL_ARFLAGS := cqs
+
+############################################################
+## Macros after this line are shared by the 64-bit config.
 
 HOST_CUSTOM_LD_COMMAND := true
 
-# Workaround for lack of "-Wl,--whole-archive" in MacOS's linker.
-define _darwin-extract-and-include-single-whole-static-lib
-@echo "preparing StaticLib: $(PRIVATE_MODULE) [including $(1)]"
-$(hide) ldir=$(PRIVATE_INTERMEDIATES_DIR)/WHOLE/$(basename $(notdir $(1)))_objs;\
-    mkdir -p $$ldir; \
-    for f in `$(HOST_AR) t $(1)`; do \
-        $(HOST_AR) p $(1) $$f > $$ldir/$$f; \
-    done ;
-
-endef
-
-define darwin-extract-and-include-whole-static-libs
-$(if $(PRIVATE_ALL_WHOLE_STATIC_LIBRARIES), $(hide) rm -rf $(PRIVATE_INTERMEDIATES_DIR)/WHOLE)
-$(foreach lib,$(PRIVATE_ALL_WHOLE_STATIC_LIBRARIES), \
-    $(call _darwin-extract-and-include-single-whole-static-lib, $(lib)))
-endef
-
 define transform-host-o-to-shared-lib-inner
-$(call darwin-extract-and-include-whole-static-libs)
 $(hide) $(PRIVATE_CXX) \
         -dynamiclib -single_module -read_only_relocs suppress \
-        $(HOST_GLOBAL_LD_DIRS) \
-        $(HOST_GLOBAL_LDFLAGS) \
+        $($(PRIVATE_2ND_ARCH_VAR_PREFIX)HOST_GLOBAL_LD_DIRS) \
+        $(if $(PRIVATE_NO_DEFAULT_COMPILER_FLAGS),, \
+            $(PRIVATE_HOST_GLOBAL_LDFLAGS) \
+        ) \
         $(PRIVATE_ALL_OBJECTS) \
-        $(if $(PRIVATE_ALL_WHOLE_STATIC_LIBRARIES), `find $(PRIVATE_INTERMEDIATES_DIR)/WHOLE -name '*.o' 2>/dev/null`) \
+        $(addprefix -force_load , $(PRIVATE_ALL_WHOLE_STATIC_LIBRARIES)) \
         $(call normalize-host-libraries,$(PRIVATE_ALL_SHARED_LIBRARIES)) \
-        $(if $(PRIVATE_GROUP_STATIC_LIBRARIES),-Wl$(comma)--start-group) \
         $(call normalize-host-libraries,$(PRIVATE_ALL_STATIC_LIBRARIES)) \
-        $(if $(PRIVATE_GROUP_STATIC_LIBRARIES),-Wl$(comma)--end-group) \
         $(PRIVATE_LDLIBS) \
         -o $@ \
         -install_name @rpath/$(notdir $@) \
-        -Wl,-rpath,@loader_path/../lib \
-        $(PRIVATE_LDFLAGS) \
-        $(HOST_LIBGCC)
+        -Wl,-rpath,@loader_path/../$(notdir $($(PRIVATE_2ND_ARCH_VAR_PREFIX)HOST_OUT_SHARED_LIBRARIES)) \
+        $(PRIVATE_LDFLAGS)
 endef
 
 define transform-host-o-to-executable-inner
 $(hide) $(PRIVATE_CXX) \
-        -Wl,-rpath,@loader_path/../lib \
+        -Wl,-rpath,@loader_path/../$(notdir $($(PRIVATE_2ND_ARCH_VAR_PREFIX)HOST_OUT_SHARED_LIBRARIES)) \
         -o $@ \
-        $(PRE_LION_DYNAMIC_LINKER_OPTIONS) -headerpad_max_install_names \
-        $(HOST_GLOBAL_LD_DIRS) \
-        $(HOST_GLOBAL_LDFLAGS) \
+        $(PRE_LION_DYNAMIC_LINKER_OPTIONS) -Wl,-headerpad_max_install_names \
+        $($(PRIVATE_2ND_ARCH_VAR_PREFIX)HOST_GLOBAL_LD_DIRS) \
+        $(if $(PRIVATE_NO_DEFAULT_COMPILER_FLAGS),, \
+           $(PRIVATE_HOST_GLOBAL_LDFLAGS) \
+        ) \
         $(call normalize-host-libraries,$(PRIVATE_ALL_SHARED_LIBRARIES)) \
         $(PRIVATE_ALL_OBJECTS) \
         $(call normalize-host-libraries,$(PRIVATE_ALL_WHOLE_STATIC_LIBRARIES)) \
-        $(if $(PRIVATE_GROUP_STATIC_LIBRARIES),-Wl$(comma)--start-group) \
         $(call normalize-host-libraries,$(PRIVATE_ALL_STATIC_LIBRARIES)) \
-        $(if $(PRIVATE_GROUP_STATIC_LIBRARIES),-Wl$(comma)--end-group) \
         $(PRIVATE_LDFLAGS) \
-        $(PRIVATE_LDLIBS) \
-        $(HOST_LIBGCC)
+        $(PRIVATE_LDLIBS)
 endef
 
 # $(1): The file to check
