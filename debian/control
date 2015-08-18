@@ -17,14 +17,6 @@ Homepage: https://android.googlesource.com/platform/build
 Vcs-Git: git://anonscm.debian.org/android-tools/android-platform-build.git
 Vcs-Browser: https://anonscm.debian.org/cgit/android-tools/android-platform-build.git
 
-Package: android-globalconfig-dev
-Section: libdevel
-Architecture: all
-Depends: ${misc:Depends}
-Description: Global config headers for all Android programs and libraries
- This package contains headers of various architectures that must be included
- by all Android C/C++ codes.
-
 Package: zipalign
 Section: devel
 Architecture: any

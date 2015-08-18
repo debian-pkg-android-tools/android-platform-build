@@ -7,7 +7,9 @@ android-platform-build (1:5.1.1+r8-1) UNRELEASED; urgency=low
     - Add (build-)depends on zopfli
     - Update zipalign package description
     - Add build-depends on dh-exec
-  * Remove unused android-libhost(-dev)
+  * Remove unused package android-libhost(-dev)
+  * Remove package android-globalconfig-dev since it is built in
+    android-platform-system
   * Remove lintian-overrides: They may be caused by debhelper bugs
   * Makefiles independent from Quilt
   * d/zipalign.links: Install symlink to Android SDK home
