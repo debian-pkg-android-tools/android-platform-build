@@ -33,42 +33,12 @@ Structure of the package's git repository
 The source code has been excerpted form the git repository
  https://android.googlesource.com/platform/build
 
-The Android project does not release tarballs of their core software. This
-package source repo is configured following git-buildpackage's manual, under
-"When upstream uses GIT/No upstream tarballs":
-
-* http://honk.sigxcpu.org/projects/git-buildpackage/manual-html/gbp.import.html#GBP.IMPORT.UPSTREAM-GIT
-* file:///usr/share/doc/git-buildpackage/manual-html/gbp.import.html#GBP.IMPORT.UPSTREAM-GIT
-
-If you want to update the source git repo for this package to a newer release,
-then fetch the new commits from the upstream git repo:
-
- git remote add upstream https://android.googlesource.com/platform/build
- git fetch upstream
-
-debian/gbp.conf is set up to use upstream's release branches and build
-tarballs from there.  There are some files that need to be removed from the
-source tarball, they are removed in commits to the 'upstream' branch, since
-the source tarball is generated directly from that. The upstream tags and
-branches are a confusing mess of things, so this package uses debian-style
-upstream/NO tags as the canonical source marker.  These tags must be generated
-by a human, since Android does not provide a rational tagging scheme based on
-their public version numbers of the Android SDK and related packages.
-
-
 Omitted files
 -------------
 
-tools/droiddoc/templates-pdk/assets/jquery-resizable.min.js
-tools/droiddoc/templates-pdk/assets/prettify.js
-tools/droiddoc/templates-sdk/assets/js/global-libraries-combined.js
-tools/droiddoc/templates-sdk/assets/js/prettify.js
-tools/droiddoc/templates-sdk/assets/scroller/jquery.jscrollpane.min.js
-tools/droiddoc/templates-sdk/assets/scroller/jquery.mousewheel.min.js
+Please check debian/orig.excludes file. These are minimized .js files, so they
+are not the same as the original source code. They are excluede when generating
+tarballs using get-orig-source.
 
-These are minimized .js files, so they are not the same as the original source
-code.  They were removed in a commit in the 'upstream' branch so that they do
-not get included in the source tarball that is generated from this repo.
-
-
- -- Hans-Christoph Steiner <hans@eds.org>, Thu, 18 Sep 2014 20:01:52 -0400
+ -- Hans-Christoph Steiner <hans@eds.org>  Thu, 18 Sep 2014 20:01:52 -0400
+ -- Kai-Chung Yan <seamlikok@gmail.com>  Feb, 18 Aug 2015 14:10:37 +0800

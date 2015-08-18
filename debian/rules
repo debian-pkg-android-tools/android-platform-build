@@ -1,7 +1,21 @@
 #!/usr/bin/make -f
 
+export UPSTREAM_LIBVERSION = 5.1.1.8
+export UPSTREAM_TAG = android-5.1.1_r8
+export UPSTREAM_VERSION = 5.1.1+r8
+
 %:
 	dh $@
 
 override_dh_shlibdeps:
 	dh_shlibdeps -l/usr/lib/android
+
+get-orig-source:
+	mkdir android-platform-build-$(UPSTREAM_VERSION)
+	tar -f $(UPSTREAM_TAG).tar.gz -z -x --directory android-platform-build-$(UPSTREAM_VERSION)
+	tar --create --xz -X debian/orig.excludes -f android-platform-build_$(UPSTREAM_VERSION).orig.tar.xz android-platform-build-$(UPSTREAM_VERSION)
+	mv android-platform-build_$(DEBIAN_VERSION).orig.tar.xz ..
+	rm -r -f $(UPSTREAM_TAG).tar.gz android-platform-build-$(UPSTREAM_VERSION)
+
+$(UPSTREAM_TAG).tar.gz:
+	wget https://android.googlesource.com/platform/build/+archive/$(UPSTREAM_TAG).tar.gz
