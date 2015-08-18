@@ -1,9 +1,0 @@
-*~
-*.debhelper
-*.substvars
-*.log
-files
-tmp/
-zipalign/
-android-libhost-dev/
-android-libhost/
