@@ -2,14 +2,17 @@ android-platform-build (1:5.1.1+r8-1) UNRELEASED; urgency=low
 
   * New upstream release
   * Change version scheme to follow Android release tags
-  * Add myself to Uploader
+  * d/control:
+    - Add myself to Uploader
+    - Add (build-)depends on zopfli
+    - Update zipalign package description
+    - Add build-depends on dh-exec
   * Remove unused android-libhost(-dev)
   * Remove lintian-overrides: They may be caused by debhelper bugs
   * Makefiles independent from Quilt
-  * Add (build-)depends on zopfli
-  * Update zipalign package description
+  * d/zipalign.links: Install symlink to Android SDK home
 
- -- Kai-Chung Yan <seamlikok@gmail.com>  Mon, 13 Jul 2015 22:47:50 +0800
+ -- Kai-Chung Yan <seamlikok@gmail.com>  Feb, 18 Aug 2015 22:47:50 +0800
 
 android-platform-build (21-4) unstable; urgency=low
 

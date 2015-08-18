@@ -9,6 +9,7 @@ Build-Depends: android-libandroidfw-dev,
                android-liblog-dev
                android-libutils-dev
                debhelper (>= 9),
+               dh-exec,
                zlib1g-dev,
                libzopfli-dev
 Standards-Version: 3.9.6
