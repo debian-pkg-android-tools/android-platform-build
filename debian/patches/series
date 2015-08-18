@@ -1,3 +1,2 @@
 main-makefile.patch
-libhost-makefile.patch
 tools-zipalign-makefile.patch

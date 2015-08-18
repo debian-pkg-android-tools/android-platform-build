@@ -1,8 +1,0 @@
-# These shlibs are stuck into /usr/lib/android because they are only meant to
-# be used with Android utilities and they need to be built as one big package,
-# so that everything is on the exact same version.  They are registered as
-# shlibs so that dh_shlibsdeps will automatically dependency generation.
-# These libraries should never be used by other projects since they have no
-# upstream standalone releases or versioning.
-android-libhost: postinst-has-useless-call-to-ldconfig
-android-libhost: postrm-has-useless-call-to-ldconfig
