@@ -1,0 +1,7 @@
+*~
+*.debhelper
+*.substvars
+*.log
+files
+tmp/
+zipalign/
