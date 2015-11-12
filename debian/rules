@@ -18,12 +18,9 @@ override_dh_auto_clean:
 override_dh_shlibdeps:
 	dh_shlibdeps -l/usr/lib/android
 
-get-orig-source:
-	mkdir android-platform-build-$(UPSTREAM_VERSION)
-	tar -f $(UPSTREAM_TAG).tar.gz -z -x --directory android-platform-build-$(UPSTREAM_VERSION)
-	tar --create --xz -X debian/orig.excludes -f android-platform-build_$(UPSTREAM_VERSION).orig.tar.xz android-platform-build-$(UPSTREAM_VERSION)
-	mv android-platform-build_$(DEBIAN_VERSION).orig.tar.xz ..
-	rm -r -f $(UPSTREAM_TAG).tar.gz android-platform-build-$(UPSTREAM_VERSION)
+get-orig-source: $(UPSTREAM_TAG).tar.gz
+	mk-origtargz --repack --compression xz $<
+	mv $< ../android-platform-build.tar.gz
 
 $(UPSTREAM_TAG).tar.gz:
 	wget https://android.googlesource.com/platform/build/+archive/$(UPSTREAM_TAG).tar.gz

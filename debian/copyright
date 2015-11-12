@@ -1,5 +1,8 @@
 Format: http://www.debian.org/doc/packaging-manuals/copyright-format/1.0
 Source: https://android.googlesource.com/platform/build
+Files-Excluded: */prettify.js
+              */global-libraries-combined.js
+              *.min.js
 
 Files: *
 Copyright: 2008-2015, The Android Open Source Project
