@@ -33,12 +33,5 @@ Structure of the package's git repository
 The source code has been excerpted form the git repository
  https://android.googlesource.com/platform/build
 
-Omitted files
--------------
-
-Please check debian/orig.excludes file. These are minimized .js files, so they
-are not the same as the original source code. They are excluede when generating
-tarballs using get-orig-source.
-
  -- Hans-Christoph Steiner <hans@eds.org>  Thu, 18 Sep 2014 20:01:52 -0400
- -- Kai-Chung Yan <seamlikok@gmail.com>  Feb, 18 Aug 2015 14:10:37 +0800
+ -- Kai-Chung Yan <seamlikok@gmail.com>  Fri, 13 Nov 2015 13:04:53 +0800

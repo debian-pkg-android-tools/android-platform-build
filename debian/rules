@@ -1,8 +1,10 @@
 #!/usr/bin/make -f
 
-export UPSTREAM_TAG = android-5.1.1_r8
+include /usr/share/dpkg/pkg-info.mk
+
+UPSTREAM_TAG = android-$(subst +,_,$(DEB_VERSION_UPSTREAM))
 # See sdk/build_tools_source.prop_template in platform/development
-export BUILD_TOOLS_VERSION = 22.1.3
+export BUILD_TOOLS_VERSION = 23.0.1
 
 %:
 	dh $@
@@ -19,7 +21,6 @@ override_dh_shlibdeps:
 
 get-orig-source: $(UPSTREAM_TAG).tar.gz
 	mk-origtargz --repack --compression xz $<
-	mv $< ../android-platform-build.tar.gz
 
 $(UPSTREAM_TAG).tar.gz:
 	wget https://android.googlesource.com/platform/build/+archive/$(UPSTREAM_TAG).tar.gz
