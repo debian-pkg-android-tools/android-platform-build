@@ -23,10 +23,11 @@ PRODUCT_PACKAGES += \
     atrace \
     bootanimation \
     debuggerd \
-    debuggerd64 \
     dumpstate \
     dumpsys \
+    fastboot \
     gralloc.default \
+    grep \
     gzip \
     healthd \
     init \
@@ -49,26 +50,27 @@ PRODUCT_PACKAGES += \
     libm \
     libpixelflinger \
     libpower \
+    libsigchain \
     libstdc++ \
-    libstlport \
     libsurfaceflinger \
     libsurfaceflinger_ddmconnection \
     libsysutils \
     libui \
     libutils \
     linker \
-    linker64 \
     lmkd \
     logcat \
     logwrapper \
     mkshrc \
     reboot \
+    recovery \
     service \
     servicemanager \
     sh \
     surfaceflinger \
     toolbox \
-    libsigchain
+    toybox \
+    tzdatacheck \
 
 # SELinux packages
 PRODUCT_PACKAGES += \
@@ -80,9 +82,14 @@ PRODUCT_PACKAGES += \
     selinux_version \
     service_contexts
 
+# Ensure that this property is always defined so that bionic_systrace.cpp
+# can rely on it being initially set by init.
+PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
+    debug.atrace.tags.enableflags=0
 
 PRODUCT_COPY_FILES += \
     system/core/rootdir/init.usb.rc:root/init.usb.rc \
+    system/core/rootdir/init.usb.configfs.rc:root/init.usb.configfs.rc \
     system/core/rootdir/init.trace.rc:root/init.trace.rc \
     system/core/rootdir/ueventd.rc:root/ueventd.rc \
     system/core/rootdir/etc/hosts:system/etc/hosts
