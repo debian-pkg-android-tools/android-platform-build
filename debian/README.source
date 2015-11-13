@@ -26,12 +26,9 @@ The build targets that are only for Android OS builds instead have this:
 A given chunk of code that is built both for "host" will have both of these
 lines included in the Android.mk file.
 
+## Bootstrap structure
 
-Structure of the package's git repository
------------------------------------------
-
-The source code has been excerpted form the git repository
- https://android.googlesource.com/platform/build
+stage1: android-archconfig-dev
 
  -- Hans-Christoph Steiner <hans@eds.org>  Thu, 18 Sep 2014 20:01:52 -0400
  -- Kai-Chung Yan <seamlikok@gmail.com>  Fri, 13 Nov 2015 13:04:53 +0800

@@ -1,8 +1,7 @@
-include /usr/include/android/arch/android_includes.mk
-
 NAME = zipalign
 SOURCES = ZipAlign.cpp ZipEntry.cpp ZipFile.cpp
-CPPFLAGS += $(ANDROID_INCLUDES) -I/usr/include/android -I../../core/combp/include
+CPPFLAGS += -I/usr/include/android
+            -include core/combo/include/arch/linux-$(CPU)/AndroidConfig.h
 LDFLAGS += -fPIC -Wl,-rpath=/usr/lib/android -lpthread -lrt -lzopfli -lz \
            -L/usr/lib/android -lutils -lcutils -llog -landroidfw
 

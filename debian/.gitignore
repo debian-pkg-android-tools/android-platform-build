@@ -3,5 +3,6 @@
 *.substvars
 *.log
 files
-tmp/
-zipalign/
+tmp
+zipalign
+android-archconfig-dev
