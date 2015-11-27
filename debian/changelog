@@ -8,7 +8,7 @@ android-platform-build (1:6.0.0+r26-1) UNRELEASED; urgency=low
     - Update zipalign package description
     - Add build-depends on dh-exec
   * Remove unused package android-libhost(-dev)
-  * Replace android-globalconfig-dev with android-archconfig-dev in stage1
+  * Replace android-globalconfig-dev with android-androidconfig-dev in stage1
   * Makefiles independent from Quilt
   * d/zipalign.links: Install symlink to Android SDK home
   * New fix_zopfli_usage.diff: zopfli is written in C but zipalign is in C++

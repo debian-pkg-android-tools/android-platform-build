@@ -33,7 +33,7 @@ Description: Zip archive alignment tool
  uncompressed data starts with a particular alignment relative to the start of
  the file.
 
-Package: android-archconfig-dev
+Package: android-androidconfig-dev
 Section: libdevel
 Architecture: amd64 i386 arm arm64 armeb mips mipsel mips64 mips64el
 Depends: ${misc:Depends}

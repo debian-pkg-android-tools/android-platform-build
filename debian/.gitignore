@@ -1,8 +1,8 @@
-*~
 *.debhelper
-*.substvars
 *.log
+*.substvars
+*~
+android-androidconfig-dev/
 files
-tmp
-zipalign
-android-archconfig-dev
+tmp/
+zipalign/
