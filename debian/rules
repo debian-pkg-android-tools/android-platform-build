@@ -2,18 +2,17 @@
 
 include /usr/share/dpkg/architecture.mk
 include /usr/share/dpkg/pkg-info.mk
+include debian/detect_arch.mk
 
 export DEB_HOST_ARCH_CPU
-
-include debian/detect_arch.mk
 
 UPSTREAM_TAG = android-$(subst +,_,$(DEB_VERSION_UPSTREAM))
 # See sdk/build_tools_source.prop_template in platform/development
 export BUILD_TOOLS_VERSION = 23.0.1
 
-BUILD_COMMANDS =
-ifeq ($(filter stage1,$(DEB_BUILD_PROFILES)), )
-  BUILD_COMMANDS += make -C tools/zipalign -f ../../debian/zipalign.mk
+ifeq ($(filter stage1,$(DEB_BUILD_PROFILES)),)
+  BUILD_COMMANDS = make -f debian/zipalign.mk
+  CLEAN_COMMANDS = make clean -f debian/zipalign.mk
 endif
 
 %:
@@ -23,7 +22,7 @@ override_dh_auto_build:
 	$(BUILD_COMMANDS)
 
 override_dh_auto_clean:
-	make -C tools/zipalign -f ../../debian/zipalign.mk clean
+	$(CLEAN_COMMANDS)
 	dh_auto_clean
 
 override_dh_shlibdeps:
