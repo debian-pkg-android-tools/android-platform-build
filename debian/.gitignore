@@ -2,7 +2,7 @@
 *.log
 *.substvars
 *~
-android-androidconfig-dev/
+android-platform-build-headers/
 files
 tmp/
 zipalign/
