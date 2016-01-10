@@ -13,6 +13,7 @@ android-platform-build (1:6.0.0+r26-1) UNRELEASED; urgency=low
   * d/zipalign.links: Install symlink to Android SDK home
   * New fix_zopfli_usage.diff: zopfli is written in C but zipalign is in C++
   * New fix_zipalign_typo.diff: Fix a typo in zipalign's output messages
+  * Install tools/zipalign/README.txt as docs
 
  -- Kai-Chung Yan <seamlikok@gmail.com>  Fri, 13 Nov 2015 13:04:53 +0800
 

@@ -21,12 +21,7 @@ Vcs-Browser: https://anonscm.debian.org/cgit/android-tools/android-platform-buil
 Package: zipalign
 Architecture: amd64 i386 arm arm64 armeb mips mipsel mips64 mips64el
 Build-Profiles: <!stage1>
-Depends: android-libandroidfw,
-         android-libcutils,
-         android-liblog,
-         android-libutils,
-         ${shlibs:Depends},
-         ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Zip archive alignment tool
  zipalign is an archive alignment tool that provides important optimization to
  Android application (.apk) files. The purpose is to ensure that all

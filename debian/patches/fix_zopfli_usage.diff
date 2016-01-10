@@ -13,12 +13,3 @@ Last-Update: 2015-08-18
  
  #include <memory.h>
  #include <sys/stat.h>
-@@ -846,7 +848,7 @@
- 
-     while (length) {
-         long readSize;
--        
-+
-         readSize = sizeof(tmpBuf);
-         if (readSize > length)
-             readSize = length;
