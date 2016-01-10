@@ -38,5 +38,8 @@ Section: libdevel
 Architecture: amd64 i386 arm arm64 armeb mips mipsel mips64 mips64el
 Depends: ${misc:Depends}
 Description: Shared headers in AOSP repository platform/build
+ This package contains header files in AOSP repository platform/build that do
+ not belong to any specific libraries but used by other programs.
+ .
  This package contains AndroidConfig.h for x86, misp(64) and arm(64) which must
  be included in all C/C++ source files of AOSP componnets.
