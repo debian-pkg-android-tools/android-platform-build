@@ -5,7 +5,6 @@ Maintainer: Android tools Maintainer <android-tools-devel@lists.alioth.debian.or
 Uploaders: Kai-Chung Yan <seamlikok@gmail.com>,
            Hans-Christoph Steiner <hans@eds.org>
 Build-Depends: android-libandroidfw-dev <!stage1>,
-               android-libcutils-dev <!stage1>,
                android-liblog-dev <!stage1>,
                android-libutils-dev <!stage1>,
                debhelper (>= 9.20141010),
