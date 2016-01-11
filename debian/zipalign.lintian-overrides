@@ -5,4 +5,4 @@
 # interface and are not versioned at all.  These libraries are meant to be
 # built from source along with the utilities that use them all in one giant
 # release process.
-zipalign: binary-or-shlib-defines-rpath usr/bin/zipalign /usr/lib/android
+zipalign: binary-or-shlib-defines-rpath
