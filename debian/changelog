@@ -4,11 +4,12 @@ android-platform-build (1:6.0.0+r26-1) UNRELEASED; urgency=low
   * Change version scheme to follow Android release tags
   * d/control:
     - Add myself to Uploaders
-    - Add (build-)depends on zopfli
+    - Add (build-)depends on zopfli (>= 1.0.1-3)
     - Update zipalign package description
     - Add build-depends on dh-exec
   * Remove unused package android-libhost(-dev)
-  * Replace android-globalconfig-dev with android-androidconfig-dev in stage1
+  * Rename android-globalconfig-dev to android-platform-build-headers
+  * Make android-platform-build-headers for stage1
   * Makefiles independent from Quilt
   * d/zipalign.links: Install symlink to Android SDK home
   * New fix_zopfli_usage.diff: zopfli is written in C but zipalign is in C++
