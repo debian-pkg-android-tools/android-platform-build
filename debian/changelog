@@ -1,6 +1,9 @@
-android-platform-build (1:6.0.0+r26-1) UNRELEASED; urgency=low
+android-platform-build (1:6.0.0+r26-1~stage1) UNRELEASED; urgency=low
 
   * New upstream release
+  * stage1 upload
+    - Remove <!stage1> sections in d/control
+    - export DEB_BUILD_PROFILES = stage1 in d/rules
   * Change version scheme to follow Android release tags
   * d/control:
     - Add myself to Uploaders
