@@ -1,3 +1,9 @@
+android-platform-build (1:6.0.0+r26-1~stage1.1) unstable; urgency=medium
+
+  * upload to unstable
+
+ -- Hans-Christoph Steiner <hans@eds.org>  Sun, 07 Feb 2016 22:01:12 +0100
+
 android-platform-build (1:6.0.0+r26-1~stage1) experimental; urgency=low
 
   * New upstream release
