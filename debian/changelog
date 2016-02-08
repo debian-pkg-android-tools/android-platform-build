@@ -1,4 +1,4 @@
-android-platform-build (1:6.0.0+r26-1) UNRELEASED; urgency=medium
+android-platform-build (1:6.0.0+r26-1) unstable; urgency=medium
 
   * Upload without any build profiles
     - Restore <!stage1> sections in d/control
