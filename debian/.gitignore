@@ -3,6 +3,7 @@
 *.substvars
 *~
 android-platform-build-headers/
+debhelper-build-stamp
 files
 tmp/
 zipalign/

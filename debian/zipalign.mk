@@ -1,7 +1,8 @@
 NAME = zipalign
 SOURCES = ZipAlign.cpp ZipEntry.cpp ZipFile.cpp
 SOURCES := $(foreach source, $(SOURCES), tools/zipalign/$(source))
-CPPFLAGS += -I/usr/include/android -include android/arch/AndroidConfig.h
+CPPFLAGS += -I/usr/include/android \
+            -include core/combo/include/arch/linux-x86/AndroidConfig.h
 LDFLAGS += -fPIC -Wl,-rpath=/usr/lib/android -lpthread -lzopfli -lz \
            -L/usr/lib/android -lutils -llog -landroidfw
 
