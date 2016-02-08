@@ -1,3 +1,3 @@
 #!/usr/bin/dh-exec
 
-zipalign   usr/lib/android-sdk/build-tools/${BUILD_TOOLS_VERSION}/zipalign
+zipalign   usr/lib/android-sdk/build-tools/${BUILD_TOOLS_VERSION}
