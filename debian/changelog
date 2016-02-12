@@ -2,6 +2,7 @@ android-platform-build (1:6.0.1+r16-1) UNRELEASED; urgency=medium
 
   * New upstream release
   * d/rules: Do not execute build commands on other architectures
+  * android-platform-build-headers.install: Add core/version_defaults.mk
 
  -- Kai-Chung Yan <seamlikok@gmail.com>  Fri, 12 Feb 2016 15:05:23 +0800
 
