@@ -11,8 +11,10 @@ UPSTREAM_TAG = android-$(subst +,_,$(DEB_VERSION_UPSTREAM))
 export BUILD_TOOLS_VERSION = 23.0.1
 
 ifeq ($(filter stage1,$(DEB_BUILD_PROFILES)),)
-  BUILD_COMMANDS = make -f debian/zipalign.mk
-  CLEAN_COMMANDS = make clean -f debian/zipalign.mk
+  ifneq ($(filter amd64 i386,$(DEB_HOST_ARCH_CPU)),)
+    BUILD_COMMANDS = make -f debian/zipalign.mk
+    CLEAN_COMMANDS = make clean -f debian/zipalign.mk
+  endif
 endif
 
 %:
