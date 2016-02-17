@@ -1,4 +1,4 @@
-android-platform-build (1:6.0.1+r16-1) UNRELEASED; urgency=medium
+android-platform-build (1:6.0.1+r16-1) unstable; urgency=medium
 
   * New upstream release
   * d/rules: Do not execute build commands on other architectures
