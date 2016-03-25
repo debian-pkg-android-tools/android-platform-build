@@ -5,7 +5,7 @@ include /usr/share/dpkg/pkg-info.mk
 include debian/detect_arch.mk
 
 export DEB_HOST_ARCH_CPU
-
+export DEB_HOST_MULTIARCH
 UPSTREAM_TAG = android-$(subst +,_,$(DEB_VERSION_UPSTREAM))
 # See sdk/build_tools_source.prop_template in platform/development
 export BUILD_TOOLS_VERSION = 23.0.2
