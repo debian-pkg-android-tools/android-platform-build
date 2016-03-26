@@ -1,4 +1,4 @@
-android-platform-build (1:6.0.1+r16-2) UNRELEASED; urgency=medium
+android-platform-build (1:6.0.1+r16-2) unstable; urgency=medium
 
   * d/rules: BUILD_TOOLS_VERSION => 23.0.2
   * Add support of multi-arch
