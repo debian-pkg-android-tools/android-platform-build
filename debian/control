@@ -19,7 +19,7 @@ Vcs-Browser: https://anonscm.debian.org/cgit/android-tools/android-platform-buil
 
 Package: android-platform-build-headers
 Section: libdevel
-Architecture: amd64 i386 arm arm64 armeb mips mipsel mips64 mips64el
+Architecture: amd64 i386 arm64 armel armhf mips mipsel mips64el
 Depends: ${misc:Depends}
 Description: Shared headers and makefiles in AOSP repository platform/build
  This package contains the following:
