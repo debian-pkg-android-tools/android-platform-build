@@ -9,6 +9,7 @@ export DEB_HOST_MULTIARCH
 UPSTREAM_TAG = android-$(subst +,_,$(DEB_VERSION_UPSTREAM))
 # See sdk/build_tools_source.prop_template in platform/development
 export BUILD_TOOLS_VERSION = 23.0.2
+export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
 ifeq ($(filter stage1,$(DEB_BUILD_PROFILES)),)
   ifneq ($(filter amd64 i386,$(DEB_HOST_ARCH_CPU)),)
