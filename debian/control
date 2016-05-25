@@ -12,6 +12,7 @@ Build-Depends: android-libandroidfw-dev (>= 6.0.1+r16~) [amd64 i386] <!stage1>,
                dpkg-dev (>= 1.17.14),
                libzopfli-dev (>= 1.0.1-3) [amd64 i386] <!stage1>,
                zlib1g-dev [amd64 i386] <!stage1>
+Build-Depends-Indep: pandoc
 Standards-Version: 3.9.8
 Homepage: https://android.googlesource.com/platform/build
 Vcs-Git: https://anonscm.debian.org/git/android-tools/android-platform-build.git
@@ -40,10 +41,10 @@ Description: Zip archive alignment tool
 Package: android-logtags-tools
 Architecture: all
 Depends: python, ${misc:Depends}
-Description: Tools from AOSP that process .logtags files
+Description: Tools from AOSP that process event-logs-tags files
  This package contains Python scripts from AOSP repository platform/build that
- process .logtags files. It contains:
+ process event-logs-tags (.logtags) files. It contains:
    * java-event-log-tags
    * merge-event-log-tags
- java-event-log-tags are used in the process of build Android platform framework
+ They are used in the process of build Android platform framework
  "android.jar".
