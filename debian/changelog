@@ -1,6 +1,6 @@
 android-platform-build (1:6.0.1+r16-3) UNRELEASED; urgency=medium
 
-  * Only support official architectures
+  * Remove unofficial architectures: mips64, armeb, arm
 
  -- Kai-Chung Yan <seamlikok@gmail.com>  Wed, 18 May 2016 20:15:26 +0800
 
