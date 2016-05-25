@@ -1,0 +1,3 @@
+tools/event_log_tags.py       usr/lib/python2.7/dist-packages/android-logtags-tools
+tools/java-event-log-tags.py  usr/lib/python2.7/dist-packages/android-logtags-tools
+tools/merge-event-log-tags.py usr/lib/python2.7/dist-packages/android-logtags-tools

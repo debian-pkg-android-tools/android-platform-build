@@ -36,3 +36,14 @@ Description: Zip archive alignment tool
  Android application (.apk) files. The purpose is to ensure that all
  uncompressed data starts with a particular alignment relative to the start of
  the file.
+
+Package: android-logtags-tools
+Architecture: all
+Depends: python
+Description: Tools from AOSP that proccess .logtags files
+ This package contains Python scripts from AOSP repository platform/build that
+ process .logtags files. It contains:
+   * java-event-log-tags
+   * merge-event-log-tags
+ java-event-log-tags are used in the process of build Android platform framework
+ "android.jar".
