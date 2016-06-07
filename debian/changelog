@@ -3,7 +3,9 @@ android-platform-build (1:6.0.1+r16-3) UNRELEASED; urgency=medium
   * Remove unofficial architectures: mips64, armeb, arm
   * New package: android-logtags-tools
   * Standards-Version => 3.9.8
-  * d/rules: export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+  * d/rules:
+    - export DEB_BUILD_MAINT_OPTIONS = hardening=+all
+    - Let dh_shlibdeps search multiarch android directory
 
  -- Kai-Chung Yan <seamlikok@gmail.com>  Wed, 18 May 2016 20:15:26 +0800
 
