@@ -41,9 +41,9 @@ Description: Zip archive alignment tool
 Package: android-logtags-tools
 Architecture: all
 Depends: python, ${misc:Depends}
-Description: Tools from AOSP that process event-logs-tags files
+Description: Tools from AOSP that process event-log-tags files
  This package contains Python scripts from AOSP repository platform/build that
- process event-logs-tags (.logtags) files. It contains:
+ process event-log-tags (.logtags) files. It contains:
    * java-event-log-tags
    * merge-event-log-tags
  They are used in the process of build Android platform framework
