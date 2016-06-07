@@ -1,5 +1,8 @@
-android-platform-build (1:6.0.1+r16-3) UNRELEASED; urgency=medium
+android-platform-build (1:6.0.1+r16-3) unstable; urgency=medium
 
+  * Team upload.
+
+  [ Kai-Chung Yan ]
   * Remove unofficial architectures: mips64, armeb, arm
   * New package: android-logtags-tools
   * Standards-Version => 3.9.8
@@ -7,7 +10,7 @@ android-platform-build (1:6.0.1+r16-3) UNRELEASED; urgency=medium
     - export DEB_BUILD_MAINT_OPTIONS = hardening=+all
     - Let dh_shlibdeps search multiarch android directory
 
- -- Kai-Chung Yan <seamlikok@gmail.com>  Wed, 18 May 2016 20:15:26 +0800
+ -- Markus Koschany <apo@debian.org>  Tue, 07 Jun 2016 12:41:21 +0200
 
 android-platform-build (1:6.0.1+r16-2) unstable; urgency=medium
 
