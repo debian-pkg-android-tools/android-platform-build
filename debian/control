@@ -46,5 +46,5 @@ Description: Tools from AOSP that process event-log-tags files
  process event-log-tags (.logtags) files. It contains:
    * java-event-log-tags
    * merge-event-log-tags
- They are used in the process of build Android platform framework
+ They are used in the process of building the Android platform framework
  "android.jar".
