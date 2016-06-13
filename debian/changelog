@@ -1,4 +1,4 @@
-android-platform-build (1:6.0.1+r16-4) UNRELEASED; urgency=medium
+android-platform-build (1:6.0.1+r16-4) unstable; urgency=medium
 
   * d/rules: Split build targets of indep and arch (Closes: #826855)
 
