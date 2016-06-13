@@ -27,8 +27,10 @@ debian/merge-event-log-tags.1:
 %:
 	dh $@
 
-override_dh_auto_build: debian/java-event-log-tags.1 debian/merge-event-log-tags.1
+override_dh_auto_build-arch:
 	$(BUILD_COMMANDS)
+
+override_dh_auto_build-indep: debian/java-event-log-tags.1 debian/merge-event-log-tags.1
 
 override_dh_auto_clean:
 	$(CLEAN_COMMANDS)
