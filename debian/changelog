@@ -1,3 +1,11 @@
+android-platform-build (1:6.0.1+r55-1) UNRELEASED; urgency=medium
+
+  * New upstream release.
+  * debian: Add watch file for usage with uscan
+  * debian/watch: recompress using xz
+
+ -- Chirayu Desai <chirayudesai1@gmail.com>  Thu, 21 Jul 2016 23:02:43 +0530
+
 android-platform-build (1:6.0.1+r16-4) unstable; urgency=medium
 
   * d/rules: Split build targets of indep and arch (Closes: #826855)
