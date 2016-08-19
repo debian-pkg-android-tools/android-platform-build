@@ -1,4 +1,3 @@
 #!/usr/bin/dh-exec
 
 core/combo/include/arch/linux-${CPU}/AndroidConfig.h   usr/include/${DEB_HOST_MULTIARCH}/android/arch
-core/version_defaults.mk                               usr/include/android

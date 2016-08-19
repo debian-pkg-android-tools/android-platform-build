@@ -26,7 +26,6 @@ Description: Shared headers and makefiles in AOSP repository platform/build
  This package contains the following:
  .
  * AndroidConfig.h for x86, MIPS and ARM
- * version_defaults.mk for referencing API Level
 
 Package: zipalign
 Architecture: amd64 i386
