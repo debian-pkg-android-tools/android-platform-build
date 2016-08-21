@@ -1,27 +1,27 @@
 # More info see: /usr/share/dpkg/cputable
 
-ifeq ($(DEB_HOST_ARCH_CPU), amd64)
+ifeq ($(DEB_HOST_ARCH), amd64)
   CPU = x86
 endif
-ifeq ($(DEB_HOST_ARCH_CPU), i386)
+ifeq ($(DEB_HOST_ARCH), i386)
   CPU = x86
 endif
-ifeq ($(DEB_HOST_ARCH_CPU), armel)
+ifeq ($(DEB_HOST_ARCH), armel)
   CPU = arm
 endif
-ifeq ($(DEB_HOST_ARCH_CPU), armhf)
+ifeq ($(DEB_HOST_ARCH), armhf)
   CPU = arm
 endif
-ifeq ($(DEB_HOST_ARCH_CPU), arm64)
+ifeq ($(DEB_HOST_ARCH), arm64)
   CPU = arm64
 endif
-ifeq ($(DEB_HOST_ARCH_CPU), mips)
+ifeq ($(DEB_HOST_ARCH), mips)
   CPU = mips
 endif
-ifeq ($(DEB_HOST_ARCH_CPU), mipsel)
+ifeq ($(DEB_HOST_ARCH), mipsel)
   CPU = mips
 endif
-ifeq ($(DEB_HOST_ARCH_CPU), mips64el)
+ifeq ($(DEB_HOST_ARCH), mips64el)
   CPU = mips64
 endif
 
