@@ -14,7 +14,7 @@ export DEB_CFLAGS_MAINT_APPEND = -DNDEBUG
 export DEB_CXXFLAGS_MAINT_APPEND = -DNDEBUG
 
 ifeq ($(filter stage1,$(DEB_BUILD_PROFILES)),)
-  ifneq ($(filter amd64 i386,$(DEB_HOST_ARCH_CPU)),)
+  ifneq ($(filter amd64 i386,$(DEB_HOST_ARCH)),)
     BUILD_COMMANDS = make -f debian/zipalign.mk
     CLEAN_COMMANDS = make clean -f debian/zipalign.mk
   endif
