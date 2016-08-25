@@ -4,7 +4,7 @@
 
 # NAME
 
-java-event-log-tags - event-logs-tags to Java soure translator
+java-event-log-tags - event-logs-tags to Java source translator
 
 # SYNOPSIS
 
