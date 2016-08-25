@@ -20,15 +20,18 @@ ifeq ($(filter stage1,$(DEB_BUILD_PROFILES)),)
 endif
 
 debian/java-event-log-tags.1:
-	pandoc -s -o debian/java-event-log-tags.1 debian/java-event-log-tags.1.md
+	pandoc -s -o $@ debian/java-event-log-tags.1.md
 
 debian/merge-event-log-tags.1:
-	pandoc -s -o debian/merge-event-log-tags.1 debian/merge-event-log-tags.1.md
+	pandoc -s -o $@ debian/merge-event-log-tags.1.md
+
+debian/zipalign.1:
+	pandoc -s -o $@ debian/zipalign.1.md
 
 %:
 	dh $@
 
-override_dh_auto_build-arch:
+override_dh_auto_build-arch: debian/zipalign.1
 	$(BUILD_COMMANDS)
 
 override_dh_auto_build-indep: debian/java-event-log-tags.1 debian/merge-event-log-tags.1
@@ -36,7 +39,7 @@ override_dh_auto_build-indep: debian/java-event-log-tags.1 debian/merge-event-lo
 override_dh_auto_clean:
 	$(CLEAN_COMMANDS)
 	dh_auto_clean
-	$(RM) debian/java-event-log-tags.1 debian/merge-event-log-tags.1
+	$(RM) debian/*.1
 
 override_dh_shlibdeps:
 	dh_shlibdeps -l/usr/lib/android -l/usr/lib/$(DEB_HOST_MULTIARCH)/android
