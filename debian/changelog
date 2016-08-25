@@ -1,4 +1,4 @@
-android-platform-build (1:6.0.1+r55-1) UNRELEASED; urgency=medium
+android-platform-build (1:6.0.1+r55-1~stage1) unstable; urgency=medium
 
   [ Chirayu Desai ]
   * New upstream release.
@@ -12,6 +12,9 @@ android-platform-build (1:6.0.1+r55-1) UNRELEASED; urgency=medium
     architectures. This fixes FTBFS on ARM architectures.
   * d/rules: No longer export DEB_BUILD_MAINT_OPTIONS = hardening=+all as
     bindnow and pie will be default in Stretch
+
+  [ Hans-Christoph Steiner ]
+  * stage1 upload: export DEB_BUILD_PROFILES = stage1 in debian/rules
 
  -- Kai-Chung Yan <seamlikok@gmail.com>  Wed, 24 Aug 2016 18:55:08 +0800
 
