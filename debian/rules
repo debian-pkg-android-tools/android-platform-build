@@ -4,8 +4,6 @@ include /usr/share/dpkg/architecture.mk
 include /usr/share/dpkg/pkg-info.mk
 include debian/detect_arch.mk
 
-export DEB_BUILD_PROFILES = stage1
-
 export DEB_HOST_ARCH_CPU
 export DEB_HOST_MULTIARCH
 UPSTREAM_TAG = android-$(subst +,_,$(DEB_VERSION_UPSTREAM))
@@ -14,10 +12,8 @@ export BUILD_TOOLS_VERSION = 23.0.2
 export DEB_CFLAGS_MAINT_APPEND = -DNDEBUG
 export DEB_CXXFLAGS_MAINT_APPEND = -DNDEBUG
 
-ifeq ($(filter stage1,$(DEB_BUILD_PROFILES)),)
-  ifneq ($(filter amd64 i386,$(DEB_HOST_ARCH)),)
-    ARCH_COMPONENTS = zipalign debian/zipalign.1
-  endif
+ifneq ($(filter amd64 i386,$(DEB_HOST_ARCH)),)
+  ARCH_COMPONENTS = zipalign debian/zipalign.1
 endif
 
 debian/java-event-log-tags.1:

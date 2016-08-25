@@ -26,9 +26,5 @@ The build targets that are only for Android OS builds instead have this:
 A given chunk of code that is built both for "host" will have both of these
 lines included in the Android.mk file.
 
-## Bootstrap structure
-
-stage1: android-archconfig-dev
-
- -- Hans-Christoph Steiner <hans@eds.org>  Thu, 18 Sep 2014 20:01:52 -0400
+ -- Hans-Christoph Steiner <hans@eds.org>, Fri,  2 Sep 2016 14:56:57 +0200
  -- Kai-Chung Yan <seamlikok@gmail.com>  Fri, 13 Nov 2015 13:04:53 +0800
