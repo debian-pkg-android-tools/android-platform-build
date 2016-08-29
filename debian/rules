@@ -16,8 +16,7 @@ export DEB_CXXFLAGS_MAINT_APPEND = -DNDEBUG
 
 ifeq ($(filter stage1,$(DEB_BUILD_PROFILES)),)
   ifneq ($(filter amd64 i386,$(DEB_HOST_ARCH)),)
-    BUILD_COMMANDS = make -f debian/zipalign.mk
-    CLEAN_COMMANDS = make clean -f debian/zipalign.mk
+    ARCH_COMPONENTS = zipalign debian/zipalign.1
   endif
 endif
 
@@ -27,21 +26,23 @@ debian/java-event-log-tags.1:
 debian/merge-event-log-tags.1:
 	pandoc -s -o $@ debian/merge-event-log-tags.1.md
 
+zipalign:
+	make -f debian/zipalign.mk
+
 debian/zipalign.1:
 	pandoc -s -o $@ debian/zipalign.1.md
 
 %:
 	dh $@
 
-override_dh_auto_build-arch: debian/zipalign.1
-	$(BUILD_COMMANDS)
+override_dh_auto_build-arch: $(ARCH_COMPONENTS)
 
 override_dh_auto_build-indep: debian/java-event-log-tags.1 debian/merge-event-log-tags.1
 
 override_dh_auto_clean:
-	$(CLEAN_COMMANDS)
 	dh_auto_clean
 	$(RM) debian/*.1
+	make clean -f debian/zipalign.mk
 
 override_dh_shlibdeps:
 	dh_shlibdeps -l/usr/lib/android -l/usr/lib/$(DEB_HOST_MULTIARCH)/android
