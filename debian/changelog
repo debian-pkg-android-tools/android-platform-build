@@ -1,3 +1,14 @@
+android-platform-build (1:6.0.1+r55-1~stage1.1) unstable; urgency=medium
+
+  [ Chirayu Desai ]
+  * d/control: Move pandoc to B-D
+
+  [ Kai-Chung Yan (殷啟聰) ]
+  * d/rules: Let d/zipalign.1 only generated on specific architectures
+  * d/rules: get-orig-source makes use of d/watch
+
+ -- Chirayu Desai <chirayudesai1@gmail.com>  Fri, 02 Sep 2016 14:22:09 +0200
+
 android-platform-build (1:6.0.1+r55-1~stage1) unstable; urgency=medium
 
   [ Chirayu Desai ]
