@@ -37,6 +37,17 @@ Description: Zip archive alignment tool
  uncompressed data starts with a particular alignment relative to the start of
  the file.
 
+Package: ziptime
+Architecture: amd64 i386
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Zip archive timestamp remover
+ ziptime normalizes the timestamps in the header of a Zip file.  It
+ was created as part of the Android SDK to help make reproducible
+ builds of Android application (.apk) files. It replaces all
+ timestamps in the Zip headers with a static time (Jan 1 2008). The
+ extra fields are not changed, so you'll need to use the -X option to
+ zip so that it doesn't create the 'universal time' extra.
+
 Package: android-logtags-tools
 Architecture: all
 Depends: python, ${misc:Depends}

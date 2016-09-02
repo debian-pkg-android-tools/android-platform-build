@@ -9,4 +9,7 @@ files
 java-event-log-tags.1
 merge-event-log-tags.1
 tmp/
+zipalign.1
+ziptime.1
 zipalign/
+ziptime/

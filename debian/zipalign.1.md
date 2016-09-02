@@ -10,7 +10,7 @@ zipalign - ZIP/APK alignment tool for Android application files
 
 To align infile.zip and save it as outfile.zip:
 
-**zipalign** [-f] [-p] [-t] [-v] [-z] _align_ _infile.zip_ _outfile.zip_
+**zipalign** [-f] [-p] [-v] [-z] _align_ _infile.zip_ _outfile.zip_
 
 To confirm the alignment of existing.zip:
 
@@ -65,9 +65,6 @@ https://developer.android.com/tools/publishing/app-signing.html
 -p
 : Page align stored shared object files
 
--t
-: Zero out timestamps for reproducible builds
-
 -v
 : Verbose output
 
@@ -76,4 +73,7 @@ https://developer.android.com/tools/publishing/app-signing.html
 
 # SEE ALSO
 
+ziptime(1)
+
 https://developer.android.com/studio/command-line/zipalign.html
+
