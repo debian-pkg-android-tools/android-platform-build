@@ -1,3 +1,9 @@
+android-platform-build (1:6.0.1+r55-2) unstable; urgency=medium
+
+  * include `ziptime` from git via a patch
+
+ -- Hans-Christoph Steiner <hans@eds.org>  Fri, 02 Sep 2016 21:18:34 +0200
+
 android-platform-build (1:6.0.1+r55-1) unstable; urgency=medium
 
   * upload final stage
