@@ -10,23 +10,14 @@ ifneq ($(filter amd64 i386 armel armhf arm64 mips mipsel mips64el,$(DEB_HOST_ARC
   ARCH_COMPONENTS = zipalign debian/zipalign.1 ziptime debian/ziptime.1
 endif
 
-debian/java-event-log-tags.1:
-	pandoc -s -o $@ debian/java-event-log-tags.1.md
+debian/%.1: debian/%.1.md
+	pandoc -s -o $@ $<
 
-debian/merge-event-log-tags.1:
-	pandoc -s -o $@ debian/merge-event-log-tags.1.md
+zipalign: debian/zipalign.mk
+	make -f $<
 
-zipalign:
-	make -f debian/zipalign.mk
-
-debian/zipalign.1:
-	pandoc -s -o $@ debian/zipalign.1.md
-
-ziptime:
-	make -f debian/ziptime.mk
-
-debian/ziptime.1:
-	pandoc -s -o $@ debian/ziptime.1.md
+ziptime: debian/ziptime.mk
+	make -f $<
 
 %:
 	dh $@
