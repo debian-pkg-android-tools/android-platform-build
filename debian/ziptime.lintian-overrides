@@ -1,8 +1,0 @@
-# There are a bunch of libraries that are shared among the Android tools. In
-# the Google builds, they are often statically linked into each binary. Here,
-# there is /usr/lib/android for the shared versions.  The idea is that only
-# the Android tools will link to them since they have no proper public
-# interface and are not versioned at all.  These libraries are meant to be
-# built from source along with the utilities that use them all in one giant
-# release process.
-ziptime: binary-or-shlib-defines-rpath
