@@ -22,7 +22,9 @@
 
 PRODUCT_PACKAGES += \
     BasicDreams \
-    Browser \
+    BlockedNumberProvider \
+    BookmarkProvider \
+    Browser2 \
     Calendar \
     CalendarProvider \
     CaptivePortalLogin \
@@ -33,7 +35,6 @@ PRODUCT_PACKAGES += \
     DownloadProviderUi \
     Email \
     ExactCalculator \
-    Exchange2 \
     ExternalStorageProvider \
     FusedLocation \
     InputDevices \
@@ -42,10 +43,12 @@ PRODUCT_PACKAGES += \
     LatinIME \
     Launcher2 \
     ManagedProvisioning \
+    MtpDocumentsProvider \
     PicoTts \
     PacProcessor \
     libpac \
     PrintSpooler \
+    PrintRecommendationService \
     ProxyHandler \
     QuickSearchBox \
     Settings \
