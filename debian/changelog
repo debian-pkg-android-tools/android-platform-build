@@ -1,3 +1,9 @@
+android-platform-build (1:7.0.0+r1-1) UNRELEASED; urgency=medium
+
+  * New upstream release
+
+ -- Kai-Chung Yan <seamlikok@gmail.com>  Thu, 06 Oct 2016 14:33:59 +0800
+
 android-platform-build (1:6.0.1+r55-2) unstable; urgency=medium
 
   * include `ziptime` from git via a patch
