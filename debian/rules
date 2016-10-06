@@ -1,7 +1,6 @@
 #!/usr/bin/make -f
 
 include /usr/share/dpkg/architecture.mk
-include debian/detect_arch.mk
 
 export DEB_HOST_MULTIARCH
 # See sdk/build_tools_source.prop_template in platform/development

@@ -23,10 +23,8 @@ Package: android-platform-build-headers
 Section: libdevel
 Architecture: amd64 i386 arm64 armel armhf mips mipsel mips64el
 Depends: ${misc:Depends}
-Description: Shared headers and makefiles in AOSP repository platform/build
- This package contains the following:
- .
- * AndroidConfig.h for x86, MIPS and ARM
+Description: Transitional dummy package
+ This package is for transitional only, feel free to remove it.
 
 Package: zipalign
 Architecture: amd64 i386

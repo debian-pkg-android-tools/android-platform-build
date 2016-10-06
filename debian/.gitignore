@@ -3,7 +3,6 @@
 *.substvars
 *~
 android-logtags-tools/
-android-platform-build-headers/
 debhelper-build-stamp
 files
 java-event-log-tags.1
