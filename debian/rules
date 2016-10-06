@@ -3,8 +3,6 @@
 include /usr/share/dpkg/architecture.mk
 
 export DEB_HOST_MULTIARCH
-# See sdk/build_tools_source.prop_template in platform/development
-export BUILD_TOOLS_VERSION = 23.0.2
 export DEB_CPPFLAGS_MAINT_APPEND = -DNDEBUG -I/usr/include/android
 export DEB_LDFLAGS_MAINT_APPEND = -fPIC
 

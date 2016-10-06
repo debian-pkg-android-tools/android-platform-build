@@ -1,3 +1,1 @@
-#!/usr/bin/dh-exec
-
-usr/lib/android-sdk/build-tools/${BUILD_TOOLS_VERSION}/zipalign   usr/bin/zipalign
+usr/lib/android-sdk/build-tools/debian/zipalign   usr/bin/zipalign

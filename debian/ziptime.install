@@ -1,3 +1,1 @@
-#!/usr/bin/dh-exec
-
-ziptime   usr/bin/
+ziptime   usr/bin
