@@ -1,6 +1,6 @@
-% ZIPALIGN(1) android-platform-build | zipalign Manuals
+% ZIPALIGN(1) | 7.0.0_r1
 % The Android Open Source Project
-% 6.0.1_r55
+% 22 August 2016
 
 # NAME
 
