@@ -5,9 +5,9 @@ Maintainer: Android tools Maintainer <android-tools-devel@lists.alioth.debian.or
 Uploaders: Kai-Chung Yan <seamlikok@gmail.com>,
            Hans-Christoph Steiner <hans@eds.org>,
            Chirayu Desai <chirayudesai1@gmail.com>
-Build-Depends: debhelper (>= 9.20141010),
                dh-exec,
                dpkg-dev (>= 1.17.14),
+Build-Depends: debhelper (>= 10),
                android-libandroidfw-dev (>= 1:7.0.0+r1) [amd64 i386 armel armhf arm64 mips mipsel mips64el],
                android-liblog-dev (>= 1:7.0.0+r1) [amd64 i386 armel armhf arm64 mips mipsel mips64el],
                android-libutils-dev (>= 1:7.0.0+r1) [amd64 i386 armel armhf arm64 mips mipsel mips64el],
