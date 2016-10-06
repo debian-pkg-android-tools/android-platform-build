@@ -1,16 +1,13 @@
 #!/usr/bin/make -f
 
 include /usr/share/dpkg/architecture.mk
-include /usr/share/dpkg/pkg-info.mk
 include debian/detect_arch.mk
 
-export DEB_HOST_ARCH_CPU
 export DEB_HOST_MULTIARCH
-UPSTREAM_TAG = android-$(subst +,_,$(DEB_VERSION_UPSTREAM))
 # See sdk/build_tools_source.prop_template in platform/development
 export BUILD_TOOLS_VERSION = 23.0.2
-export DEB_CFLAGS_MAINT_APPEND = -DNDEBUG
-export DEB_CXXFLAGS_MAINT_APPEND = -DNDEBUG
+export DEB_CPPFLAGS_MAINT_APPEND = -DNDEBUG -I/usr/include/android
+export DEB_LDFLAGS_MAINT_APPEND = -fPIC
 
 ifneq ($(filter amd64 i386,$(DEB_HOST_ARCH)),)
   ARCH_COMPONENTS = zipalign debian/zipalign.1 ziptime debian/ziptime.1
@@ -47,8 +44,5 @@ override_dh_auto_clean:
 	make clean -f debian/zipalign.mk
 	make clean -f debian/ziptime.mk
 
-override_dh_shlibdeps:
-	dh_shlibdeps -l/usr/lib/android -l/usr/lib/$(DEB_HOST_MULTIARCH)/android
-
-get-orig-source: $(UPSTREAM_TAG).tar.gz
+get-orig-source:
 	uscan --download-current-version --force-download
