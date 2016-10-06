@@ -1,0 +1,14 @@
+Description: Fix typo
+Author: Kai-Chung Yan (殷啟聰)
+Last-Update: 2016-10-06
+--- a/tools/zipalign/ZipAlign.cpp
++++ b/tools/zipalign/ZipAlign.cpp
+@@ -212,7 +212,7 @@
+     }
+ 
+     if (verbose)
+-        printf("Verification %s\n", foundBad ? "FAILED" : "succesful");
++        printf("Verification %s\n", foundBad ? "FAILED" : "successful");
+ 
+     return foundBad ? 1 : 0;
+ }
