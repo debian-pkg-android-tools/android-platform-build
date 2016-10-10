@@ -11,6 +11,10 @@ Build-Depends: debhelper (>= 9.20141010),
                android-libandroidfw-dev (>= 1:6.0.1+r55~) [amd64 i386],
                android-liblog-dev (>= 1:6.0.1+r55~) [amd64 i386],
                android-libutils-dev (>= 1:6.0.1+r55~) [amd64 i386],
+               default-jdk-headless | default-jdk,
+	       javahelper,
+               libbcprov-java,
+               libbcpkix-java,
                libzopfli-dev (>= 1.0.1-3) [amd64 i386],
                zlib1g-dev [amd64 i386],
                pandoc
@@ -47,6 +51,26 @@ Description: Zip archive timestamp remover
  timestamps in the Zip headers with a static time (Jan 1 2008). The
  extra fields are not changed, so you'll need to use the -X option to
  zip so that it doesn't create the 'universal time' extra.
+
+Package: signapk
+Architecture: all
+Depends: ${java:Depends}, ${misc:Depends}
+Description: Command line tool for signing Android ZIP/JAR/APK
+ signapk is a command line tool for signing ZIP files, including JARs,
+ APKs, and Over-The-Air (OTA) updates, in a way compatible with
+ Android's mincrypt verifier, using EC or RSA keys and SHA1 or
+ SHA-256. The tool can additionally sign APKs using APK Signature
+ Scheme v2. It is the standard tool used to sign APK and JAR files
+ distributed as part of Android ROMs.
+
+Package: signtos
+Architecture: all
+Depends: ${java:Depends}, ${misc:Depends}
+Description: Android signing tool for signing Trusty images
+ Signs ARM Trusty images for use with operating systems that support
+ it. Trusty is a set of software components supporting a Trusted
+ Execution Environment (TEE) on mobile devices.  The key must be
+ stored in PKCS8 format.
 
 Package: android-logtags-tools
 Architecture: all
