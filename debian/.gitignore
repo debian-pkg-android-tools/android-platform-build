@@ -12,3 +12,8 @@ zipalign.1
 ziptime.1
 zipalign/
 ziptime/
+_jh_*
+signapk.1
+signapk/
+signtos.1
+signtos/

@@ -1,10 +1,13 @@
 #!/usr/bin/make -f
 
 include /usr/share/dpkg/architecture.mk
+include /usr/share/javahelper/java-vars.mk
 
 export DEB_HOST_MULTIARCH
 export DEB_CPPFLAGS_MAINT_APPEND = -DNDEBUG -I/usr/include/android
 export DEB_LDFLAGS_MAINT_APPEND = -fPIC
+
+export CLASSPATH=/usr/share/java/bcprov.jar:/usr/share/java/bcpkix.jar
 
 ifneq ($(filter amd64 i386 armel armhf arm64 mips mipsel mips64el,$(DEB_HOST_ARCH)),)
   ARCH_COMPONENTS = zipalign debian/zipalign.1 ziptime debian/ziptime.1
@@ -19,12 +22,29 @@ zipalign: debian/zipalign.mk
 ziptime: debian/ziptime.mk
 	make -f $<
 
+debian/signapk.1:
+	pandoc -s -o $@ debian/signapk.1.md
+
+debian/signtos.1:
+	pandoc -s -o $@ debian/signtos.1.md
+
 %:
-	dh $@
+	dh $@ --with javahelper
 
 override_dh_auto_build-arch: $(ARCH_COMPONENTS)
 
 override_dh_auto_build-indep: debian/java-event-log-tags.1 debian/merge-event-log-tags.1
+override_dh_auto_build-indep: debian/signapk.1 debian/signtos.1
+
+override_jh_build:
+	jh_build --javacopts="-source 7" --no-javadoc \
+		--main=com.android.signapk.SignApk signapk.jar tools/signapk/
+	jh_build --javacopts="-source 7" --no-javadoc \
+		--main=com.android.signtos.SignTos signtos.jar tools/signtos/
+
+override_jh_exec:
+	jh_exec --indep --package=signapk
+	jh_exec --indep --package=signtos
 
 override_dh_auto_clean:
 	dh_auto_clean
