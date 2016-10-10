@@ -1,3 +1,10 @@
+android-platform-build (1:6.0.1+r55-3) unstable; urgency=medium
+
+  * add new binary packages: signapk and signtos
+  * remove unnecessary linked libs from ziptime
+
+ -- Hans-Christoph Steiner <hans@eds.org>  Mon, 10 Oct 2016 19:37:55 +0200
+
 android-platform-build (1:6.0.1+r55-2) unstable; urgency=medium
 
   * include `ziptime` from git via a patch
