@@ -1,4 +1,4 @@
-android-platform-build (1:7.0.0+r1-1) UNRELEASED; urgency=medium
+android-platform-build (1:7.0.0+r1-1) experimental; urgency=medium
 
   * New upstream release
   * No longer provide `AndroidConfig.h`: Dropped by upstream
@@ -8,6 +8,13 @@ android-platform-build (1:7.0.0+r1-1) UNRELEASED; urgency=medium
   * Update to debhelper 10
 
  -- Kai-Chung Yan <seamlikok@gmail.com>  Tue, 11 Oct 2016 21:22:09 +0800
+
+android-platform-build (1:6.0.1+r55-3) unstable; urgency=medium
+
+  * add new binary packages: signapk and signtos
+  * remove unnecessary linked libs from ziptime
+
+ -- Hans-Christoph Steiner <hans@eds.org>  Mon, 10 Oct 2016 19:37:55 +0200
 
 android-platform-build (1:6.0.1+r55-2) unstable; urgency=medium
 
