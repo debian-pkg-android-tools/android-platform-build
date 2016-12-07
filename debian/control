@@ -1,7 +1,7 @@
 Source: android-platform-build
 Section: devel
 Priority: optional
-Maintainer: Android tools Maintainer <android-tools-devel@lists.alioth.debian.org>
+Maintainer: Android Tools Maintainers <android-tools-devel@lists.alioth.debian.org>
 Uploaders: Kai-Chung Yan <seamlikok@gmail.com>,
            Hans-Christoph Steiner <hans@eds.org>,
            Chirayu Desai <chirayudesai1@gmail.com>
