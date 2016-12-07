@@ -1,0 +1,25 @@
+Description: remove optional conscrypt depends
+ Conscrypt is a library that is only really maintained as an internal
+ dependency for Android.  BouncyCastle should work just fine, so no
+ need to package up a large complicated library just for this.
+Author: Hans-Christoph Steiner
+Forwarded: not-needed
+Last-Update: 2016-10-12
+--- a/tools/signapk/src/com/android/signapk/SignApk.java
++++ b/tools/signapk/src/com/android/signapk/SignApk.java
+@@ -34,7 +34,6 @@
+ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+ import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
+ import org.bouncycastle.util.encoders.Base64;
+-import org.conscrypt.OpenSSLProvider;
+ 
+ import java.io.Console;
+ import java.io.BufferedReader;
+@@ -1018,7 +1017,6 @@
+ 
+         // Install Conscrypt as the highest-priority provider. Its crypto primitives are faster than
+         // the standard or Bouncy Castle ones.
+-        Security.insertProviderAt(new OpenSSLProvider(), 1);
+         // Install Bouncy Castle (as the lowest-priority provider) because Conscrypt does not offer
+         // DSA which may still be needed.
+         // TODO: Stop installing Bouncy Castle provider once DSA is no longer needed.

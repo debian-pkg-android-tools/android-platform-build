@@ -2,37 +2,25 @@
 
 include /usr/share/dpkg/architecture.mk
 include /usr/share/javahelper/java-vars.mk
-include debian/detect_arch.mk
 
 export DEB_HOST_MULTIARCH
-# See sdk/build_tools_source.prop_template in platform/development
-export BUILD_TOOLS_VERSION = 23.0.2
 export DEB_CPPFLAGS_MAINT_APPEND = -DNDEBUG -I/usr/include/android
 export DEB_LDFLAGS_MAINT_APPEND = -fPIC
 
 export CLASSPATH=/usr/share/java/bcprov.jar:/usr/share/java/bcpkix.jar
 
-ifneq ($(filter amd64 i386,$(DEB_HOST_ARCH)),)
+ifneq ($(filter amd64 i386 armel armhf arm64 mips mipsel mips64el,$(DEB_HOST_ARCH)),)
   ARCH_COMPONENTS = zipalign debian/zipalign.1 ziptime debian/ziptime.1
 endif
 
-debian/java-event-log-tags.1:
-	pandoc -s -o $@ debian/java-event-log-tags.1.md
+debian/%.1: debian/%.1.md
+	pandoc -s -o $@ $<
 
-debian/merge-event-log-tags.1:
-	pandoc -s -o $@ debian/merge-event-log-tags.1.md
+zipalign: debian/zipalign.mk
+	make -f $<
 
-zipalign:
-	make -f debian/zipalign.mk
-
-debian/zipalign.1:
-	pandoc -s -o $@ debian/zipalign.1.md
-
-ziptime:
-	make -f debian/ziptime.mk
-
-debian/ziptime.1:
-	pandoc -s -o $@ debian/ziptime.1.md
+ziptime: debian/ziptime.mk
+	make -f $<
 
 debian/signapk.1:
 	pandoc -s -o $@ debian/signapk.1.md
@@ -49,8 +37,10 @@ override_dh_auto_build-indep: debian/java-event-log-tags.1 debian/merge-event-lo
 override_dh_auto_build-indep: debian/signapk.1 debian/signtos.1
 
 override_jh_build:
-	jh_build --no-javadoc --main=com.android.signapk.SignApk signapk.jar tools/signapk/
-	jh_build --no-javadoc --main=com.android.signtos.SignTos signtos.jar tools/signtos/
+	jh_build --javacopts="-source 7" --no-javadoc \
+		--main=com.android.signapk.SignApk signapk.jar tools/signapk/
+	jh_build --javacopts="-source 7" --no-javadoc \
+		--main=com.android.signtos.SignTos signtos.jar tools/signtos/
 
 override_jh_exec:
 	jh_exec --indep --package=signapk

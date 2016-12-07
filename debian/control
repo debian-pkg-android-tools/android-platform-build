@@ -5,18 +5,16 @@ Maintainer: Android tools Maintainer <android-tools-devel@lists.alioth.debian.or
 Uploaders: Kai-Chung Yan <seamlikok@gmail.com>,
            Hans-Christoph Steiner <hans@eds.org>,
            Chirayu Desai <chirayudesai1@gmail.com>
-Build-Depends: debhelper (>= 9.20141010),
-               dh-exec,
-               dpkg-dev (>= 1.17.14),
-               android-libandroidfw-dev (>= 1:6.0.1+r55~) [amd64 i386],
-               android-liblog-dev (>= 1:6.0.1+r55~) [amd64 i386],
-               android-libutils-dev (>= 1:6.0.1+r55~) [amd64 i386],
+Build-Depends: debhelper (>= 10),
+               android-libandroidfw-dev (>= 1:7.0.0+r1) [amd64 i386 armel armhf arm64 mips mipsel mips64el],
+               android-liblog-dev (>= 1:7.0.0+r1) [amd64 i386 armel armhf arm64 mips mipsel mips64el],
+               android-libutils-dev (>= 1:7.0.0+r1) [amd64 i386 armel armhf arm64 mips mipsel mips64el],
                default-jdk-headless | default-jdk,
-	       javahelper,
+               javahelper,
                libbcprov-java,
                libbcpkix-java,
-               libzopfli-dev (>= 1.0.1-3) [amd64 i386],
-               zlib1g-dev [amd64 i386],
+               libzopfli-dev (>= 1.0.1-3) [amd64 i386 armel armhf arm64 mips mipsel mips64el],
+               zlib1g-dev [amd64 i386 armel armhf arm64 mips mipsel mips64el],
                pandoc
 Standards-Version: 3.9.8
 Homepage: https://android.googlesource.com/platform/build
@@ -25,15 +23,13 @@ Vcs-Browser: https://anonscm.debian.org/cgit/android-tools/android-platform-buil
 
 Package: android-platform-build-headers
 Section: libdevel
-Architecture: amd64 i386 arm64 armel armhf mips mipsel mips64el
+Architecture: amd64 i386 armel armhf arm64 mips mipsel mips64el
 Depends: ${misc:Depends}
-Description: Shared headers and makefiles in AOSP repository platform/build
- This package contains the following:
- .
- * AndroidConfig.h for x86, MIPS and ARM
+Description: Transitional dummy package
+ This package is for transitional only, feel free to remove it.
 
 Package: zipalign
-Architecture: amd64 i386
+Architecture: amd64 i386 armel armhf arm64 mips mipsel mips64el
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Zip archive alignment tool
  zipalign is an archive alignment tool that provides important optimization to
@@ -42,7 +38,7 @@ Description: Zip archive alignment tool
  the file.
 
 Package: ziptime
-Architecture: amd64 i386
+Architecture: amd64 i386 armel armhf arm64 mips mipsel mips64el
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: Zip archive timestamp remover
  ziptime normalizes the timestamps in the header of a Zip file.  It

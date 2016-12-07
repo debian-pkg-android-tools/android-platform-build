@@ -1,3 +1,6 @@
+% ZIPTIME(1) | 7.0.0_r1
+% The Android Open Source Project
+% 22 August 2016
 
 # NAME
 
@@ -9,7 +12,7 @@ To normalize the timestamps in the Zip header:
 
 **ziptime** _file.zip_
 
-_file.zip_ is an existing Zip archive to rewrite.
+where _file.zip_ is an existing Zip archive to rewrite.
 
 # DESCRIPTION
 
@@ -19,7 +22,6 @@ This tools replaces the timestamps in the zip headers with a static time
 
 # SEE ALSO
 
-zip(1)
-zipalign(1)
-
-https://developer.android.com/studio/command-line/zipalign.html
+  * zip(1)
+  * zipalign(1)
+  * https://developer.android.com/studio/command-line/zipalign.html

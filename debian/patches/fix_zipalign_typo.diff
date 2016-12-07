@@ -1,8 +1,9 @@
-Author: Kai-Chung Yan <seamlikok@gmail.com>
-Last-Update: 2015-08-18
+Description: Fix typo
+Author: Kai-Chung Yan (殷啟聰)
+Last-Update: 2016-10-06
 --- a/tools/zipalign/ZipAlign.cpp
 +++ b/tools/zipalign/ZipAlign.cpp
-@@ -189,7 +189,7 @@
+@@ -212,7 +212,7 @@
      }
  
      if (verbose)
