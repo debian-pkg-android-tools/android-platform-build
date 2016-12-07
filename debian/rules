@@ -48,7 +48,7 @@ override_jh_exec:
 
 override_dh_auto_clean:
 	dh_auto_clean
-	$(RM) debian/*.1
+	$(RM) debian/*.1 *.jar
 	make clean -f debian/zipalign.mk
 	make clean -f debian/ziptime.mk
 
